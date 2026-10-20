@@ -32,7 +32,7 @@ export async function POST(req: Request) {
       const logResponse = await fetch(new URL(`/api/v1/data-tables/${encodeURIComponent(messagesTable)}/rows`, n8nBaseUrl), {
         method: "POST",
         headers: { "X-N8N-API-KEY": n8nApiKey, "Content-Type": "application/json", "Accept": "application/json" },
-        body: JSON.stringify({ data: {
+        body: JSON.stringify({ data: [{
           event_key: `admin_${chatId}_${String(data.result?.message_id || Date.now())}`,
           chat_id: chatId,
           user_id: chatId,
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
           send_status: "manual_admin",
           task_id: "",
           ai_analysis: ""
-        }}),
+        }] }),
         cache: "no-store"
       });
       const logBody = await logResponse.text();
