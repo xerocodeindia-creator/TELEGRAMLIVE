@@ -20,5 +20,44 @@ export async function POST(req: Request) {
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok || !data.ok) return NextResponse.json({ error: "Telegram send failed", detail: data.description || "Unknown Telegram API error" }, { status: 502, headers: privateJsonHeaders });
-  return NextResponse.json({ sent: true, messageId: data.result?.message_id, chatId: data.result?.chat?.id }, { headers: privateJsonHeaders });
+
+  // Persist the successfully sent admin reply to the shared n8n Data Table.
+  let logged = false;
+  let logError = "";
+  const n8nBaseUrl = process.env.N8N_BASE_URL;
+  const n8nApiKey = process.env.N8N_API_KEY;
+  const messagesTable = process.env.N8N_CONVERSATION_MESSAGES_TABLE_ID || "PHT0vNxeMxik6br6";
+  if (n8nBaseUrl && n8nApiKey) {
+    try {
+      const logResponse = await fetch(new URL(`/api/v1/data-tables/${encodeURIComponent(messagesTable)}/rows`, n8nBaseUrl), {
+        method: "POST",
+        headers: { "X-N8N-API-KEY": n8nApiKey, "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify({ data: {
+          event_key: `admin_${chatId}_${String(data.result?.message_id || Date.now())}`,
+          chat_id: chatId,
+          user_id: chatId,
+          first_name: "Admin",
+          direction: "outbound",
+          message_type: "text",
+          text,
+          caption: "",
+          file_id: "",
+          telegram_message_id: String(data.result?.message_id || ""),
+          event_time: new Date().toISOString(),
+          send_status: "manual_admin",
+          task_id: "",
+          ai_analysis: ""
+        }}),
+        cache: "no-store"
+      });
+      const logBody = await logResponse.text();
+      if (!logResponse.ok) throw new Error(`n8n returned ${logResponse.status}: ${logBody.slice(0, 200)}`);
+      logged = true;
+    } catch (error) {
+      logError = error instanceof Error ? error.message : "Unknown cloud logging error";
+    }
+  } else {
+    logError = "N8N_BASE_URL or N8N_API_KEY is not configured.";
+  }
+  return NextResponse.json({ sent: true, logged, logError, messageId: data.result?.message_id, chatId: data.result?.chat?.id }, { headers: privateJsonHeaders });
 }
