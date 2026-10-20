@@ -64,7 +64,7 @@ export default function DashboardPage() {
     const stateWarning=currentIndex>=0 && currentIndex!==expectedIndex && currentTaskId!=="completed";
     return {id:clientId,name:String(r.first_name||"Telegram user"),username:"",phone:r.phone_number?String(r.phone_number):"",task,status:stateWarning?"Task state mismatch — needs review":String(r.flow_step||proofStatus||"Active"),last:r.updatedAt?new Date(r.updatedAt).toLocaleString():"Recently active",paused:Boolean(r.ai_paused),progress:completedTaskIds.length,completedTaskIds,currentTaskId,proofStatus,stateWarning,messages:clientMessages};
    });
-   if(mapped.length){setClients(mapped);if(!mapped.some(c=>c.id===selectedId))setSelectedId(mapped[0].id);}
+   if(mapped.length){setClients(prev=>mapped.map(c=>{const previous=prev.find(p=>p.id===c.id);const localReplies=(previous?.messages||[]).filter(m=>m.direction==="admin"&&!c.messages.some(serverMessage=>serverMessage.direction==="admin"&&serverMessage.text===m.text));return {...c,messages:[...c.messages,...localReplies]};}));if(!mapped.some(c=>c.id===selectedId))setSelectedId(mapped[0].id);}
    else setClients([]);
   } catch(e){setConnected(false);setNotice(e instanceof Error?e.message:"Unable to load data.");}
   finally{setLoading(false);}
