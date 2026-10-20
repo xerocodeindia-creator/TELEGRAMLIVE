@@ -46,7 +46,7 @@ export default function DashboardPage() {
    const rows=Array.isArray(data.clients)?data.clients:[];
    const messageRows=Array.isArray(data.messages)?data.messages:[];
    const asMillis=(value:any)=>{if(value===null||value===undefined||value==="")return 0;const n=Number(value);if(Number.isFinite(n)&&n>0)return n<1e12?n*1000:n;const d=Date.parse(String(value));return Number.isFinite(d)?d:0;};
-   const mapped:Client[]=rows.filter((r:any)=>/^\\d+$/.test(String(r.client_id||""))).map((r:any)=>{
+   const mapped:Client[]=rows.filter((r:any)=>/^\d+$/.test(String(r.client_id||""))).map((r:any)=>{
     let completed:any[]=[];try{const parsed=JSON.parse(r.completed_tasks||"[]");if(Array.isArray(parsed))completed=parsed.map(String);}catch{}
     const completedTaskIds=taskIds.filter(id=>completed.includes(id));
     const currentTaskId=String(r.current_task||"");
