@@ -31,10 +31,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unable to download image from Telegram" }, { status: 502 });
     }
 
-    const contentType = imageResponse.headers.get("content-type") || "application/octet-stream";
-    if (!contentType.startsWith("image/")) {
-      return NextResponse.json({ error: "The Telegram attachment is not an image" }, { status: 415 });
-    }
+    const upstreamType = (imageResponse.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
+    const extension = filePath.toLowerCase().split(".").pop() || "";
+    const inferredType: Record<string, string> = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", gif: "image/gif" };
+    // Telegram/CDN responses can omit or genericize content-type; infer from Telegram's file path.
+    const contentType = upstreamType.startsWith("image/") ? upstreamType : (inferredType[extension] || "image/jpeg");
 
     return new NextResponse(imageResponse.body, {
       status: 200,
