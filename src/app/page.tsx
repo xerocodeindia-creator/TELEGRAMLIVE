@@ -21,6 +21,7 @@ export default function DashboardPage() {
  const [selectedId,setSelectedId] = useState(sampleClients[0].id);
  const [search,setSearch] = useState("");
  const [filter,setFilter] = useState("All users");
+ const [unreadIds,setUnreadIds] = useState<string[]>([]);
  const [selectedTaskTab,setSelectedTaskTab] = useState(0);
  const [message,setMessage] = useState("");
  const [notice,setNotice] = useState("Checking admin session and n8n connection…");
@@ -45,6 +46,10 @@ export default function DashboardPage() {
    setNotice(data.messagesConfigured?"Connected to n8n. Message log is available.":"Connected to progress/submission tables. Full conversation history still needs message logging in n8n.");
    const rows=Array.isArray(data.clients)?data.clients:[];
    const messageRows=Array.isArray(data.messages)?data.messages:[];
+   const latestIncomingByClient = new Map<string, number>();
+   for (const m of messageRows) { if (String(m.direction)==="inbound" && m.chat_id!=null) { const id=String(m.chat_id); const stamp=asMillis(m.event_time)||asMillis(m.createdAt)||0; latestIncomingByClient.set(id, Math.max(latestIncomingByClient.get(id)||0, stamp)); } }
+   const storedRead: Record<string, number> = {}; try { Object.assign(storedRead, JSON.parse(localStorage.getItem("aarohi_last_read_v1")||"{}")); } catch {}
+   setUnreadIds([...latestIncomingByClient.entries()].filter(([id,stamp])=>stamp>(Number(storedRead[id])||0)&&id!==selectedId).map(([id])=>id));
    const asMillis=(value:any)=>{if(value===null||value===undefined||value==="")return 0;const n=Number(value);if(Number.isFinite(n)&&n>0)return n<1e12?n*1000:n;const d=Date.parse(String(value));return Number.isFinite(d)?d:0;};
    const mapped:Client[]=rows.filter((r:any)=>/^\d+$/.test(String(r.client_id||""))).map((r:any)=>{
     let completed:any[]=[];try{const parsed=JSON.parse(r.completed_tasks||"[]");if(Array.isArray(parsed))completed=parsed.map(String);}catch{}
@@ -84,8 +89,9 @@ export default function DashboardPage() {
   finally{setBusy(false);}
  }
  async function logout(){await fetch("/api/auth",{method:"DELETE"});location.replace("/login");}
- const filtered=useMemo(()=>clients.filter(c=>(c.name.toLowerCase().includes(search.toLowerCase())||c.id.includes(search)||c.username.toLowerCase().includes(search.toLowerCase()))&&(filter==="All users"||(filter==="AI paused"&&c.paused)||(filter==="Needs attention"&&/proof|waiting|error|attention/i.test(c.status)))),[clients,search,filter]);
+ const filtered=useMemo(()=>clients.filter(c=>(c.name.toLowerCase().includes(search.toLowerCase())||c.id.includes(search)||c.username.toLowerCase().includes(search.toLowerCase()))&&(filter==="All users"||(filter==="AI paused"&&c.paused)||(filter==="Needs attention"&&/proof|waiting|error|attention/i.test(c.status))||(filter==="Unread"&&unreadIds.includes(c.id)))),[clients,search,filter,unreadIds]);
  const active=clients.filter(c=>!c.paused).length;
+ useEffect(()=>{if(!selectedId)return;const latest=clients.find(c=>c.id===selectedId)?.messages.filter(m=>m.direction==="user").at(-1);if(latest){const store:Record<string,number>={};try{Object.assign(store,JSON.parse(localStorage.getItem("aarohi_last_read_v1")||"{}"));}catch{}store[selectedId]=Date.now();localStorage.setItem("aarohi_last_read_v1",JSON.stringify(store));setUnreadIds(prev=>prev.filter(id=>id!==selectedId));}},[selectedId,clients]);
  const proofCount=clients.filter(c=>/proof|complete/i.test(c.status)).length;
  const attention=clients.filter(c=>/proof|waiting|error|attention/i.test(c.status)).length;
  if(!authReady)return <main className={styles.loading}><Bot size={24}/><p>Checking admin session…</p></main>;
@@ -107,8 +113,8 @@ export default function DashboardPage() {
     <div className={styles.metrics}><Metric icon={<Users/>} label="Total clients" value={String(clients.length)} foot={connected?"From n8n":"Sample records"}/><Metric icon={<MessageCircle/>} label="Active conversations" value={String(active)} foot={connected?"Current control state":"Sample records"}/><Metric icon={<CheckCheck/>} label="Proofs / completions" value={String(proofCount)} foot={connected?"From workflow status":"Sample records"}/><Metric icon={<AlertTriangle/>} label="Needs attention" value={String(attention)} foot={connected?"From workflow status":"Sample records"}/></div>
     <div className={styles.workspaceGrid}>
      <section className={styles.panel}><div className={styles.panelHead}><div><h2>Conversations</h2><p>Select a client to inspect the chat</p></div><span className={styles.liveTag}><span></span>{connected?"Connected":"Preview"}</span></div>
-      <div className={styles.filters}><div className={styles.search}><Search size={16}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name, username, Telegram ID"/></div><select value={filter} onChange={e=>setFilter(e.target.value)}><option>All users</option><option>AI paused</option><option>Needs attention</option></select></div>
-      <div className={styles.clientList}>{filtered.map(c=><button key={c.id} onClick={()=>{setSelectedId(c.id);setMessage("");}} className={`${styles.clientRow} ${selectedId===c.id?styles.clientSelected:""}`}><div className={styles.clientAvatar}>{c.name.split(" ").map(s=>s[0]).join("").slice(0,2)}</div><div className={styles.clientMeta}><strong>{c.name}</strong><small>{c.username||("Telegram ID "+c.id)} · {c.last}</small><span>{c.status}</span></div><div className={styles.rowStatus}><i className={c.paused?styles.pausedDot:styles.activeDot}></i></div></button>)}{filtered.length===0&&<div className={styles.noClients}>No clients found for this filter.</div>}</div>
+      <div className={styles.filters}><div className={styles.search}><Search size={16}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name, username, Telegram ID"/></div><select value={filter} onChange={e=>setFilter(e.target.value)}><option>All users</option><option>Unread</option><option>AI paused</option><option>Needs attention</option></select></div>
+      <div className={styles.clientList}>{filtered.map(c=><button key={c.id} onClick={()=>{setSelectedId(c.id);setMessage("");}} className={`${styles.clientRow} ${selectedId===c.id?styles.clientSelected:""}`}><div className={styles.clientAvatar}>{c.name.split(" ").map(s=>s[0]).join("").slice(0,2)}</div><div className={styles.clientMeta}><strong>{c.name}</strong><small>{c.username||("Telegram ID "+c.id)} · {c.last}</small><span>{c.status}</span>{unreadIds.includes(c.id)&&<small className={styles.unreadBadge}>Unread</small>}</div><div className={styles.rowStatus}><i className={c.paused?styles.pausedDot:styles.activeDot}></i></div></button>)}{filtered.length===0&&<div className={styles.noClients}>No clients found for this filter.</div>}</div>
      </section>
      {selected&&<section className={styles.panel+" "+styles.chatPanel}>
       <div className={styles.chatHead}><div className={styles.clientAvatar+" "+styles.bigAvatar}>{selected.name.split(" ").map(s=>s[0]).join("").slice(0,2)}</div><div className={styles.chatTitle}><h2>{selected.name}</h2><p>Telegram ID {selected.id}</p><div className={styles.chips}><span className={styles.taskChip}>{selected.task}</span><span className={selected.paused?styles.pausedChip:styles.activeChip}>{selected.paused?"AI paused":"AI active / unknown"}</span></div></div><button disabled={busy||!connected} onClick={()=>togglePause(selected)} className={selected.paused?styles.resumeButton:styles.pauseButton}>{selected.paused?<CirclePlay size={16}/>:<CirclePause size={16}/>} {selected.paused?"Resume AI":"Pause AI"}</button></div>
