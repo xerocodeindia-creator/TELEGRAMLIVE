@@ -57,7 +57,7 @@ export default function DashboardPage() {
       .filter((m:any)=>String(m.chat_id||"")===clientId)
       .map((m:any,index:number)=>({m,index,stamp:asMillis(m.event_time)||asMillis(m.createdAt)||index}))
       .sort((a:any,b:any)=>a.stamp-b.stamp||a.index-b.index)
-      .map(({m,stamp}:any)=>({direction:String(m.direction)==="inbound"?"user":String(m.direction)==="outbound"?"bot":"admin",text:String(m.text||m.caption||((m.message_type==="photo"||m.message_type==="document")?"Attachment received":"")),time:new Date(stamp||Date.now()).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"}),kind:(m.message_type==="photo"||m.message_type==="document"||m.file_id)?"image":"text",fileId:m.file_id?String(m.file_id):undefined}))
+      .map(({m,stamp}:any)=>({direction:String(m.direction)==="inbound"?"user":String(m.send_status||"")==="manual_admin"?"admin":String(m.direction)==="outbound"?"bot":"admin",text:String(m.text||m.caption||((m.message_type==="photo"||m.message_type==="document")?"Attachment received":"")),time:new Date(stamp||Date.now()).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"}),kind:(m.message_type==="photo"||m.message_type==="document"||m.file_id)?"image":"text",fileId:m.file_id?String(m.file_id):undefined}))
       .filter((m:Message)=>Boolean(m.text)||m.kind==="image");
     const proofStatus=String(r.proof_status||"not_submitted");
     const expectedIndex=completedTaskIds.length;
@@ -79,7 +79,7 @@ export default function DashboardPage() {
  }
  async function sendReply(){
   if(!message.trim())return;setBusy(true);
-  try{const r=await fetch("/api/manual-reply",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chatId:selected.id,text:message.trim()})});const d=await r.json();if(!r.ok)throw new Error(d.error||"Message was not sent");const adminMessage:Message={direction:"admin",text:message.trim(),time:new Date().toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})};try{const store=JSON.parse(localStorage.getItem("aarohi_manual_replies_v1")||"{}");const previous=Array.isArray(store[selected.id])?store[selected.id]:[];store[selected.id]=[...previous,adminMessage].slice(-200);localStorage.setItem("aarohi_manual_replies_v1",JSON.stringify(store));}catch{}setClients(prev=>prev.map(x=>x.id===selected.id?{...x,messages:[...x.messages,adminMessage]}:x));setMessage("");setNotice("Manual reply sent to Telegram.");}
+  try{const r=await fetch("/api/manual-reply",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chatId:selected.id,text:message.trim()})});const d=await r.json();if(!r.ok)throw new Error(d.error||"Message was not sent");const adminMessage:Message={direction:"admin",text:message.trim(),time:new Date().toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})};setClients(prev=>prev.map(x=>x.id===selected.id?{...x,messages:[...x.messages,adminMessage]}:x));setMessage("");setNotice(d.logged?"Manual reply sent and saved to cloud conversation history.": "Telegram reply sent, but cloud history save failed. Check n8n API settings.");}
   catch(e){setNotice(e instanceof Error?e.message:"Manual reply could not be sent.");}
   finally{setBusy(false);}
  }
