@@ -6,7 +6,7 @@ import styles from "./dashboard.module.css";
 
 type Task = "Angel One" | "Choice FinX" | "Bajaj";
 type Message = { direction: "user" | "bot" | "admin"; text: string; time: string; kind?: "image" | "text"; fileId?: string };
-type Client = { id: string; name: string; username: string; phone: string; task: Task; status: string; last: string; paused: boolean; progress: number; messages: Message[] };
+type Client = { id: string; name: string; username: string; phone: string; task: Task; status: string; last: string; paused: boolean; progress: number; completedTaskIds: string[]; currentTaskId: string; proofStatus: string; stateWarning: boolean; messages: Message[] };
 const sampleClients: Client[] = [
  {id:"764203918",name:"Rahul Das",username:"@rahul_das",phone:"•••••••248",task:"Choice FinX",status:"Proof received",last:"1 min ago",paused:false,progress:1,messages:[{direction:"user",text:"Account activation in progress ka screenshot bheja.",time:"10:41",kind:"image"},{direction:"bot",text:"Screenshot mil gaya, ab main status check kar rahi hoon.",time:"10:41"},{direction:"bot",text:"Choice FinX ka onboarding status detect hua. Agla task process ho raha hai.",time:"10:42"}]},
  {id:"738194205",name:"Priya Ghosh",username:"@priya_ghosh",phone:"•••••••901",task:"Angel One",status:"Waiting for profile proof",last:"4 min ago",paused:false,progress:0,messages:[{direction:"bot",text:"Neeche More par tap kijiye, phir Profile kholkar Client ID wala screenshot bhejiye.",time:"10:32"},{direction:"user",text:"Home page screenshot",time:"10:34",kind:"image"}]},
@@ -14,6 +14,7 @@ const sampleClients: Client[] = [
  {id:"715638204",name:"Sneha Paul",username:"@sneha_p",phone:"•••••••332",task:"Angel One",status:"Task 1 complete",last:"28 min ago",paused:false,progress:1,messages:[{direction:"user",text:"Profile screenshot with Client ID",time:"09:53",kind:"image"},{direction:"bot",text:"Screenshot check ho gaya. Ab Choice FinX Task 2 share kar rahi hoon.",time:"09:54"}]}
 ];
 const taskSteps: Task[] = ["Angel One","Choice FinX","Bajaj"];
+const taskIds = ["task_1_angel_one","task_2_choice_finx","task_3"];
 
 export default function DashboardPage() {
  const [clients,setClients] = useState(sampleClients);
@@ -44,18 +45,23 @@ export default function DashboardPage() {
    const rows=Array.isArray(data.clients)?data.clients:[];
    const messageRows=Array.isArray(data.messages)?data.messages:[];
    const asMillis=(value:any)=>{if(value===null||value===undefined||value==="")return 0;const n=Number(value);if(Number.isFinite(n)&&n>0)return n<1e12?n*1000:n;const d=Date.parse(String(value));return Number.isFinite(d)?d:0;};
-   const mapped:Client[]=rows.map((r:any)=>{
-    let completed:any[]=[];try{const parsed=JSON.parse(r.completed_tasks||"[]");if(Array.isArray(parsed))completed=parsed;}catch{}
-    const taskId=String(r.current_task||"");
-    const task:Task=taskId.includes("choice")||taskId==="task_2_active"?"Choice FinX":taskId.includes("task_3")||taskId==="completed"?"Bajaj":"Angel One";
-    const clientId=String(r.client_id||"");
+   const mapped:Client[]=rows.filter((r:any)=>/^\\d+$/.test(String(r.client_id||""))).map((r:any)=>{
+    let completed:any[]=[];try{const parsed=JSON.parse(r.completed_tasks||"[]");if(Array.isArray(parsed))completed=parsed.map(String);}catch{}
+    const completedTaskIds=taskIds.filter(id=>completed.includes(id));
+    const currentTaskId=String(r.current_task||"");
+    const currentIndex=taskIds.indexOf(currentTaskId);
+    const task:Task=currentTaskId.includes("choice")?"Choice FinX":currentTaskId.includes("task_3")||currentTaskId==="completed"?"Bajaj":"Angel One";
+    const clientId=String(r.client_id);
     const clientMessages:Message[]=messageRows
       .filter((m:any)=>String(m.chat_id||"")===clientId)
       .map((m:any,index:number)=>({m,index,stamp:asMillis(m.event_time)||asMillis(m.createdAt)||index}))
       .sort((a:any,b:any)=>a.stamp-b.stamp||a.index-b.index)
       .map(({m,stamp}:any)=>({direction:String(m.direction)==="inbound"?"user":String(m.direction)==="outbound"?"bot":"admin",text:String(m.text||m.caption||((m.message_type==="photo"||m.message_type==="document")?"Attachment received":"")),time:new Date(stamp||Date.now()).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"}),kind:(m.message_type==="photo"||m.message_type==="document"||m.file_id)?"image":"text",fileId:m.file_id?String(m.file_id):undefined}))
       .filter((m:Message)=>Boolean(m.text)||m.kind==="image");
-    return {id:clientId,name:String(r.first_name||"Telegram user"),username:"",phone:r.phone_number?String(r.phone_number):"",task,status:String(r.flow_step||r.proof_status||"Active"),last:r.updatedAt?new Date(r.updatedAt).toLocaleString():"Recently active",paused:Boolean(r.ai_paused),progress:completed.length,messages:clientMessages};
+    const proofStatus=String(r.proof_status||"not_submitted");
+    const expectedIndex=completedTaskIds.length;
+    const stateWarning=currentIndex>=0 && currentIndex!==expectedIndex && currentTaskId!=="completed";
+    return {id:clientId,name:String(r.first_name||"Telegram user"),username:"",phone:r.phone_number?String(r.phone_number):"",task,status:stateWarning?"Task state mismatch — needs review":String(r.flow_step||proofStatus||"Active"),last:r.updatedAt?new Date(r.updatedAt).toLocaleString():"Recently active",paused:Boolean(r.ai_paused),progress:completedTaskIds.length,completedTaskIds,currentTaskId,proofStatus,stateWarning,messages:clientMessages};
    });
    if(mapped.length){setClients(mapped);if(!mapped.some(c=>c.id===selectedId))setSelectedId(mapped[0].id);}
    else setClients([]);
@@ -110,7 +116,7 @@ export default function DashboardPage() {
       <div className={styles.composer}><textarea value={message} onChange={e=>setMessage(e.target.value)} placeholder="Write a manual reply…" rows={2}/><button onClick={sendReply} disabled={!message.trim()||busy||!connected}><Send size={17}/>Send reply</button></div><div className={styles.chatDisclaimer}>Manual send requires a server-side Telegram token. AI pause is disabled until n8n checks persisted per-user control state.</div>
      </section>}
     </div>
-    <section className={styles.progressPanel}><div className={styles.panelHead}><div><h2>Task progress</h2><p>Current pipeline state for selected client</p></div>{selected&&<span className={styles.taskChip}>Client #{selected.id.slice(-4)}</span>}</div><div className={styles.progressGrid}>{taskSteps.map((t,i)=>{const done=!!selected&&i<selected.progress;const current=!!selected&&i===selected.progress;return <div key={t} className={styles.progressCard}><div className={styles.progressTop}><span className={done?styles.doneIcon:current?styles.currentIcon:styles.todoIcon}>{done?<CheckCheck size={18}/>:current?<Clock3 size={18}/>:<span>{i+1}</span>}</span><span className={done?styles.doneLabel:current?styles.currentLabel:styles.todoLabel}>{done?"Complete":current?"In progress":"Locked"}</span></div><h3>{t}</h3><p>{done?"Proof processed":current?"Waiting for next milestone":"Complete previous task first"}</p></div>})}</div></section>
+    <section className={styles.progressPanel}><div className={styles.panelHead}><div><h2>Task progress</h2><p>Live status from the selected client’s n8n record</p></div>{selected&&<span className={styles.taskChip}>Client #{selected.id.slice(-4)}</span>}</div>{selected?.stateWarning&&<div className={styles.pipelineWarning}><AlertTriangle size={16}/><span>Database mismatch: current task is {selected.currentTaskId}, but completed tasks list says {selected.completedTaskIds.length} completed. Later tasks remain locked until state is corrected.</span></div>}<div className={styles.progressGrid}>{taskSteps.map((t,i)=>{const taskId=taskIds[i];const done=!!selected&&selected.completedTaskIds.includes(taskId);const priorDone=i===0||!!selected&&taskIds.slice(0,i).every(id=>selected.completedTaskIds.includes(id));const current=!!selected&&!done&&priorDone&&!selected.stateWarning;const pending=!!selected&&!done&&priorDone&&/pending|submitted|review/i.test(selected.proofStatus);const label=done?"Complete":pending?"Proof pending":current?"In progress":"Locked";const detail=done?"Recorded in completed_tasks":pending?"Waiting for proof review":current?"Current task — awaiting submission":"Complete the previous task first";return <div key={t} className={styles.progressCard}><div className={styles.progressTop}><span className={done?styles.doneIcon:current||pending?styles.currentIcon:styles.todoIcon}>{done?<CheckCheck size={18}/>:current||pending?<Clock3 size={18}/>:<span>{i+1}</span>}</span><span className={done?styles.doneLabel:current||pending?styles.currentLabel:styles.todoLabel}>{label}</span></div><h3>{t}</h3><p>{detail}</p></div>})}</div></section>
     <footer className={styles.footer}>Aarohi Control Center <span>·</span> Data refreshes every 15 seconds <span>·</span> {connected?"n8n progress connected":"Demo records only"}</footer>
    </div>
   </section>
