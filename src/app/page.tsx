@@ -43,6 +43,7 @@ export default function DashboardPage() {
    setNotice(data.messagesConfigured?"Connected to n8n. Message log is available.":"Connected to progress/submission tables. Full conversation history still needs message logging in n8n.");
    const rows=Array.isArray(data.clients)?data.clients:[];
    const messageRows=Array.isArray(data.messages)?data.messages:[];
+   const asMillis=(value:any)=>{if(value===null||value===undefined||value==="")return 0;const n=Number(value);if(Number.isFinite(n)&&n>0)return n<1e12?n*1000:n;const d=Date.parse(String(value));return Number.isFinite(d)?d:0;};
    const mapped:Client[]=rows.map((r:any)=>{
     let completed:any[]=[];try{const parsed=JSON.parse(r.completed_tasks||"[]");if(Array.isArray(parsed))completed=parsed;}catch{}
     const taskId=String(r.current_task||"");
@@ -50,8 +51,9 @@ export default function DashboardPage() {
     const clientId=String(r.client_id||"");
     const clientMessages:Message[]=messageRows
       .filter((m:any)=>String(m.chat_id||"")===clientId)
-      .sort((a:any,b:any)=>new Date(String(a.event_time||a.createdAt||0)).getTime()-new Date(String(b.event_time||b.createdAt||0)).getTime())
-      .map((m:any)=>({direction:String(m.direction)==="inbound"?"user":String(m.direction)==="outbound"?"bot":"admin",text:String(m.text||m.caption||((m.message_type==="photo"||m.message_type==="document")?"Attachment received":"")),time:new Date(String(m.event_time||m.createdAt||Date.now())).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"}),kind:(m.message_type==="photo"||m.message_type==="document"||m.file_id)?"image":"text"}))
+      .map((m:any,index:number)=>({m,index,stamp:asMillis(m.event_time)||asMillis(m.createdAt)||index}))
+      .sort((a:any,b:any)=>a.stamp-b.stamp||a.index-b.index)
+      .map(({m,stamp}:any)=>({direction:String(m.direction)==="inbound"?"user":String(m.direction)==="outbound"?"bot":"admin",text:String(m.text||m.caption||((m.message_type==="photo"||m.message_type==="document")?"Attachment received":"")),time:new Date(stamp||Date.now()).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"}),kind:(m.message_type==="photo"||m.message_type==="document"||m.file_id)?"image":"text"}))
       .filter((m:Message)=>Boolean(m.text)||m.kind==="image");
     return {id:clientId,name:String(r.first_name||"Telegram user"),username:"",phone:r.phone_number?String(r.phone_number):"",task,status:String(r.flow_step||r.proof_status||"Active"),last:r.updatedAt?new Date(r.updatedAt).toLocaleString():"Recently active",paused:Boolean(r.ai_paused),progress:completed.length,messages:clientMessages};
    });
@@ -60,7 +62,7 @@ export default function DashboardPage() {
   } catch(e){setConnected(false);setNotice(e instanceof Error?e.message:"Unable to load data.");}
   finally{setLoading(false);}
  },[selectedId]);
- useEffect(()=>{refresh(false);const timer=setInterval(()=>refresh(true),15000);return()=>clearInterval(timer);},[refresh]);
+ useEffect(()=>{refresh(false);const timer=setInterval(()=>refresh(true),3000);return()=>clearInterval(timer);},[refresh]);
 
  async function togglePause(c:Client){
   const action=c.paused?"resume":"pause";setBusy(true);
