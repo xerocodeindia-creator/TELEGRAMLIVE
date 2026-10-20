@@ -27,7 +27,9 @@ export async function GET() {
       getTableRows(baseUrl, apiKey, messagesTable),
       getTableRows(baseUrl, apiKey, controlsTable)
     ]);
-    const controlByClient = new Map(controls.map((row: any) => [String(row.client_id || ""), row]));
+    const controlByClient = new Map<string, any>(
+      controls.map((row: any): [string, any] => [String(row.client_id || ""), row])
+    );
     const clientsWithControls = clients.map((row: any) => ({
       ...row,
       ai_paused: Boolean(controlByClient.get(String(row.client_id || ""))?.ai_paused)
