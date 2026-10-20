@@ -6,7 +6,7 @@ import styles from "./dashboard.module.css";
 
 type Task = "Angel One" | "Choice FinX" | "Bajaj";
 type Message = { direction: "user" | "bot" | "admin"; text: string; time: string; kind?: "image" | "text"; fileId?: string };
-type Client = { id: string; name: string; username: string; phone: string; task: Task; status: string; last: string; paused: boolean; progress: number; completedTaskIds?: string[]; currentTaskId?: string; proofStatus?: string; stateWarning?: boolean; messages: Message[] };
+type Client = { id: string; name: string; username: string; phone: string; task: Task; status: string; last: string; updatedAtRaw?: string; paused: boolean; progress: number; completedTaskIds?: string[]; currentTaskId?: string; proofStatus?: string; stateWarning?: boolean; messages: Message[] };
 const sampleClients: Client[] = [
  {id:"764203918",name:"Rahul Das",username:"@rahul_das",phone:"•••••••248",task:"Choice FinX",status:"Proof received",last:"1 min ago",paused:false,progress:1,messages:[{direction:"user",text:"Account activation in progress ka screenshot bheja.",time:"10:41",kind:"image"},{direction:"bot",text:"Screenshot mil gaya, ab main status check kar rahi hoon.",time:"10:41"},{direction:"bot",text:"Choice FinX ka onboarding status detect hua. Agla task process ho raha hai.",time:"10:42"}]},
  {id:"738194205",name:"Priya Ghosh",username:"@priya_ghosh",phone:"•••••••901",task:"Angel One",status:"Waiting for profile proof",last:"4 min ago",paused:false,progress:0,messages:[{direction:"bot",text:"Neeche More par tap kijiye, phir Profile kholkar Client ID wala screenshot bhejiye.",time:"10:32"},{direction:"user",text:"Home page screenshot",time:"10:34",kind:"image"}]},
@@ -23,6 +23,8 @@ export default function DashboardPage() {
  const [filters,setFilters] = useState<string[]>([]);
  const [unreadIds,setUnreadIds] = useState<string[]>([]);
  const [selectedTaskTab,setSelectedTaskTab] = useState(0);
+ const [selectedCompletedTaskTab,setSelectedCompletedTaskTab] = useState(0);
+ const [completionDate,setCompletionDate] = useState("");
  const [message,setMessage] = useState("");
  const messagesEndRef = useRef<HTMLDivElement|null>(null);
  const messagesContainerRef = useRef<HTMLDivElement|null>(null);
@@ -70,7 +72,7 @@ export default function DashboardPage() {
     const proofStatus=String(r.proof_status||"not_submitted");
     const expectedIndex=completedTaskIds.length;
     const stateWarning=currentIndex>=0 && currentIndex!==expectedIndex && currentTaskId!=="completed";
-    return {id:clientId,name:String(r.first_name||"Telegram user"),username:"",phone:r.phone_number?String(r.phone_number):"",task,status:stateWarning?"Task state mismatch — needs review":String(r.flow_step||proofStatus||"Active"),last:r.updatedAt?new Date(r.updatedAt).toLocaleString():"Recently active",paused:Boolean(r.ai_paused),progress:completedTaskIds.length,completedTaskIds,currentTaskId,proofStatus,stateWarning,messages:clientMessages};
+    return {id:clientId,name:String(r.first_name||"Telegram user"),username:"",phone:r.phone_number?String(r.phone_number):"",task,status:stateWarning?"Task state mismatch — needs review":String(r.flow_step||proofStatus||"Active"),last:r.updatedAt?new Date(r.updatedAt).toLocaleString():"Recently active",updatedAtRaw:r.updatedAt?String(r.updatedAt):undefined,paused:Boolean(r.ai_paused),progress:completedTaskIds.length,completedTaskIds,currentTaskId,proofStatus,stateWarning,messages:clientMessages};
    });
    if(mapped.length){setClients(prev=>mapped.map(c=>{const previous=prev.find(p=>p.id===c.id);let savedReplies:Message[]=[];try{const store=JSON.parse(localStorage.getItem("aarohi_manual_replies_v1")||"{}");savedReplies=Array.isArray(store[c.id])?store[c.id]:[];}catch{}const localReplies=[...(previous?.messages||[]),...savedReplies].filter((m,index,all)=>m.direction==="admin"&&!c.messages.some(serverMessage=>serverMessage.direction==="admin"&&serverMessage.text===m.text)&&all.findIndex(x=>x.text===m.text&&x.time===m.time)===index);return {...c,messages:[...c.messages,...localReplies]};}));if(!mapped.some(c=>c.id===selectedId))setSelectedId(mapped[0].id);}
    else setClients([]);
