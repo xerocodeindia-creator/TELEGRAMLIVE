@@ -18,18 +18,25 @@ export async function GET() {
   const clientsTable = process.env.N8N_CLIENT_PROGRESS_TABLE_ID || "yC8taftOgA9mXftw";
   const submissionsTable = process.env.N8N_TASK_SUBMISSIONS_TABLE_ID || "trjvYIR4ee5ZpWas";
   const messagesTable = process.env.N8N_CONVERSATION_MESSAGES_TABLE_ID || "PHT0vNxeMxik6br6";
+  const controlsTable = process.env.N8N_USER_CONTROLS_TABLE_ID || "pS2jwzLkwHQ8or3w";
   if (!baseUrl || !apiKey) return NextResponse.json({ connected: false, reason: "n8n_not_configured", clients: [], submissions: [], messages: [], messagesConfigured: false }, { status: 200, headers: privateJsonHeaders });
   try {
-    const [clients, submissions, messages] = await Promise.all([
+    const [clients, submissions, messages, controls] = await Promise.all([
       getTableRows(baseUrl, apiKey, clientsTable),
       getTableRows(baseUrl, apiKey, submissionsTable),
-      getTableRows(baseUrl, apiKey, messagesTable)
+      getTableRows(baseUrl, apiKey, messagesTable),
+      getTableRows(baseUrl, apiKey, controlsTable)
     ]);
+    const controlByClient = new Map(controls.map((row: any) => [String(row.client_id || ""), row]));
+    const clientsWithControls = clients.map((row: any) => ({
+      ...row,
+      ai_paused: Boolean(controlByClient.get(String(row.client_id || ""))?.ai_paused)
+    }));
     const sortedMessages = messages
       .filter((m: any) => m && m.chat_id != null)
       .sort((a: any, b: any) => new Date(String(a.event_time || a.createdAt || 0)).getTime() - new Date(String(b.event_time || b.createdAt || 0)).getTime())
       .slice(-1000);
-    return NextResponse.json({ connected: true, clients, submissions, messages: sortedMessages, messagesConfigured: true }, { headers: privateJsonHeaders });
+    return NextResponse.json({ connected: true, clients: clientsWithControls, submissions, messages: sortedMessages, messagesConfigured: true }, { headers: privateJsonHeaders });
   } catch (error) {
     return NextResponse.json({ connected: false, reason: "n8n_api_error", error: error instanceof Error ? error.message : "Unknown n8n API error", clients: [], submissions: [], messages: [], messagesConfigured: false }, { status: 502, headers: privateJsonHeaders });
   }
