@@ -42,11 +42,18 @@ export default function DashboardPage() {
    setConnected(true);
    setNotice(data.messagesConfigured?"Connected to n8n. Message log is available.":"Connected to progress/submission tables. Full conversation history still needs message logging in n8n.");
    const rows=Array.isArray(data.clients)?data.clients:[];
+   const messageRows=Array.isArray(data.messages)?data.messages:[];
    const mapped:Client[]=rows.map((r:any)=>{
     let completed:any[]=[];try{const parsed=JSON.parse(r.completed_tasks||"[]");if(Array.isArray(parsed))completed=parsed;}catch{}
     const taskId=String(r.current_task||"");
     const task:Task=taskId.includes("choice")||taskId==="task_2_active"?"Choice FinX":taskId.includes("task_3")||taskId==="completed"?"Bajaj":"Angel One";
-    return {id:String(r.client_id||""),name:String(r.first_name||"Telegram user"),username:"",phone:r.phone_number?String(r.phone_number):"",task,status:String(r.flow_step||r.proof_status||"Active"),last:r.updatedAt?new Date(r.updatedAt).toLocaleString():"Recently active",paused:Boolean(r.ai_paused),progress:completed.length,messages:[]};
+    const clientId=String(r.client_id||"");
+    const clientMessages:Message[]=messageRows
+      .filter((m:any)=>String(m.chat_id||"")===clientId)
+      .sort((a:any,b:any)=>new Date(String(a.event_time||a.createdAt||0)).getTime()-new Date(String(b.event_time||b.createdAt||0)).getTime())
+      .map((m:any)=>({direction:String(m.direction)==="inbound"?"user":String(m.direction)==="outbound"?"bot":"admin",text:String(m.text||m.caption||((m.message_type==="photo"||m.message_type==="document")?"Attachment received":"")),time:new Date(String(m.event_time||m.createdAt||Date.now())).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"}),kind:(m.message_type==="photo"||m.message_type==="document"||m.file_id)?"image":"text"}))
+      .filter((m:Message)=>Boolean(m.text)||m.kind==="image");
+    return {id:clientId,name:String(r.first_name||"Telegram user"),username:"",phone:r.phone_number?String(r.phone_number):"",task,status:String(r.flow_step||r.proof_status||"Active"),last:r.updatedAt?new Date(r.updatedAt).toLocaleString():"Recently active",paused:Boolean(r.ai_paused),progress:completed.length,messages:clientMessages};
    });
    if(mapped.length){setClients(mapped);if(!mapped.some(c=>c.id===selectedId))setSelectedId(mapped[0].id);}
    else setClients([]);
