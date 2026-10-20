@@ -64,7 +64,7 @@ export default function DashboardPage() {
     const stateWarning=currentIndex>=0 && currentIndex!==expectedIndex && currentTaskId!=="completed";
     return {id:clientId,name:String(r.first_name||"Telegram user"),username:"",phone:r.phone_number?String(r.phone_number):"",task,status:stateWarning?"Task state mismatch — needs review":String(r.flow_step||proofStatus||"Active"),last:r.updatedAt?new Date(r.updatedAt).toLocaleString():"Recently active",paused:Boolean(r.ai_paused),progress:completedTaskIds.length,completedTaskIds,currentTaskId,proofStatus,stateWarning,messages:clientMessages};
    });
-   if(mapped.length){setClients(prev=>mapped.map(c=>{const previous=prev.find(p=>p.id===c.id);const localReplies=(previous?.messages||[]).filter(m=>m.direction==="admin"&&!c.messages.some(serverMessage=>serverMessage.direction==="admin"&&serverMessage.text===m.text));return {...c,messages:[...c.messages,...localReplies]};}));if(!mapped.some(c=>c.id===selectedId))setSelectedId(mapped[0].id);}
+   if(mapped.length){setClients(prev=>mapped.map(c=>{const previous=prev.find(p=>p.id===c.id);let savedReplies:Message[]=[];try{const store=JSON.parse(localStorage.getItem("aarohi_manual_replies_v1")||"{}");savedReplies=Array.isArray(store[c.id])?store[c.id]:[];}catch{}const localReplies=[...(previous?.messages||[]),...savedReplies].filter((m,index,all)=>m.direction==="admin"&&!c.messages.some(serverMessage=>serverMessage.direction==="admin"&&serverMessage.text===m.text)&&all.findIndex(x=>x.text===m.text&&x.time===m.time)===index);return {...c,messages:[...c.messages,...localReplies]};}));if(!mapped.some(c=>c.id===selectedId))setSelectedId(mapped[0].id);}
    else setClients([]);
   } catch(e){setConnected(false);setNotice(e instanceof Error?e.message:"Unable to load data.");}
   finally{setLoading(false);}
@@ -79,7 +79,7 @@ export default function DashboardPage() {
  }
  async function sendReply(){
   if(!message.trim())return;setBusy(true);
-  try{const r=await fetch("/api/manual-reply",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chatId:selected.id,text:message.trim()})});const d=await r.json();if(!r.ok)throw new Error(d.error||"Message was not sent");setClients(prev=>prev.map(x=>x.id===selected.id?{...x,messages:[...x.messages,{direction:"admin",text:message.trim(),time:new Date().toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})}]}:x));setMessage("");setNotice("Manual reply sent to Telegram.");}
+  try{const r=await fetch("/api/manual-reply",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chatId:selected.id,text:message.trim()})});const d=await r.json();if(!r.ok)throw new Error(d.error||"Message was not sent");const adminMessage:Message={direction:"admin",text:message.trim(),time:new Date().toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})};try{const store=JSON.parse(localStorage.getItem("aarohi_manual_replies_v1")||"{}");const previous=Array.isArray(store[selected.id])?store[selected.id]:[];store[selected.id]=[...previous,adminMessage].slice(-200);localStorage.setItem("aarohi_manual_replies_v1",JSON.stringify(store));}catch{}setClients(prev=>prev.map(x=>x.id===selected.id?{...x,messages:[...x.messages,adminMessage]}:x));setMessage("");setNotice("Manual reply sent to Telegram.");}
   catch(e){setNotice(e instanceof Error?e.message:"Manual reply could not be sent.");}
   finally{setBusy(false);}
  }
