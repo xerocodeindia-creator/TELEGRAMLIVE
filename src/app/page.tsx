@@ -46,11 +46,12 @@ export default function DashboardPage() {
    setNotice(data.messagesConfigured?"Connected to n8n. Message log is available.":"Connected to progress/submission tables. Full conversation history still needs message logging in n8n.");
    const rows=Array.isArray(data.clients)?data.clients:[];
    const messageRows=Array.isArray(data.messages)?data.messages:[];
+   const asMillis=(value:any)=>{if(value===null||value===undefined||value==="")return 0;const n=Number(value);if(Number.isFinite(n)&&n>0)return n<1e12?n*1000:n;const d=Date.parse(String(value));return Number.isFinite(d)?d:0;};
    const latestIncomingByClient = new Map<string, number>();
    for (const m of messageRows) { if (String(m.direction)==="inbound" && m.chat_id!=null) { const id=String(m.chat_id); const stamp=asMillis(m.event_time)||asMillis(m.createdAt)||0; latestIncomingByClient.set(id, Math.max(latestIncomingByClient.get(id)||0, stamp)); } }
    const storedRead: Record<string, number> = {}; try { Object.assign(storedRead, JSON.parse(localStorage.getItem("aarohi_last_read_v1")||"{}")); } catch {}
    setUnreadIds([...latestIncomingByClient.entries()].filter(([id,stamp])=>stamp>(Number(storedRead[id])||0)&&id!==selectedId).map(([id])=>id));
-   const asMillis=(value:any)=>{if(value===null||value===undefined||value==="")return 0;const n=Number(value);if(Number.isFinite(n)&&n>0)return n<1e12?n*1000:n;const d=Date.parse(String(value));return Number.isFinite(d)?d:0;};
+
    const mapped:Client[]=rows.filter((r:any)=>/^\d+$/.test(String(r.client_id||""))).map((r:any)=>{
     let completed:any[]=[];try{const parsed=JSON.parse(r.completed_tasks||"[]");if(Array.isArray(parsed))completed=parsed.map(String);}catch{}
     const completedTaskIds=taskIds.filter(id=>completed.includes(id));
