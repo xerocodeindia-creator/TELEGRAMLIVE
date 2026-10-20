@@ -1,35 +1,52 @@
 # Aarohi Control Center
 
-This repository is intended for the private admin dashboard for the Aarohi Telegram bot and the n8n Client Progress Manager workflow.
+Private admin dashboard for the Aarohi Telegram bot and the n8n `Client Progress Manager` workflow.
 
-## Goals
-- Live conversation inbox: inbound Telegram messages and outbound bot replies.
-- Client progress: current task, completed tasks, screenshot submissions, verification outcome, and last activity.
-- AI activity and workflow errors: analysis result, route chosen, admin-notification delivery, and failed runs.
-- Per-user AI pause/resume and admin manual replies.
+## Current status
 
-## Current integration notes
-- Existing n8n workflow: `Client Progress Manager` (workflow ID: `FlrM2n4gfrGFgQFF`).
-- Existing workflow uses the `client_progress` and `task_submissions` data tables.
-- Existing webhook path: `anychat-client-progress`; inspect the webhook's authenticated deployment URL in n8n before configuring integrations.
-- Telegram updates currently arrive through the existing Telegram Trigger. The dashboard must not register a second Telegram webhook on the same bot token, because that can break the existing bot trigger.
-- The current workflow does not yet provide a full, durable log of every incoming and outgoing conversation message. Add message logging at the existing inbound/outbound points first.
+The initial Next.js dashboard UI, admin login/session endpoint, protected progress-data endpoint, manual Telegram reply endpoint, and an intentionally disabled AI-control endpoint are now in the repository. **This is not yet a live, production-ready dashboard.** No live chat log is displayed until the n8n workflow logs inbound and outbound messages. AI pause/resume will remain disabled until the control table and pause guard are installed in the live workflow.
 
-## Proposed architecture
-1. Keep the current Telegram Trigger as the sole Telegram update receiver.
-2. Add persistent `conversation_messages` and `user_controls` tables. Store sender, chat ID, Telegram message ID, direction, text/caption, media metadata/file ID, event time, and delivery status. Avoid storing OTPs, passwords, or banking secrets.
-3. Log inbound events and every outbound reply in the current n8n workflow. Log send success/failure only after the Telegram node result is known.
-4. Provide authenticated backend endpoints for dashboard queries, manual sends, and per-user pause/resume. Verify an admin session server-side; never ship Telegram bot tokens, n8n API keys, or database credentials to browser JavaScript.
-5. Deploy the frontend through Vercel/GitHub. Configure server-only environment variables in Vercel after an authenticated backend is ready.
-6. Add real-time updates using short polling first; move to server-sent events or WebSockets only if needed.
+## Features in the first UI build
+- Responsive conversation inbox and client/task progress view.
+- Admin login using a server-side password and signed HTTP-only cookie.
+- Server-side endpoint to read n8n client progress and task submissions.
+- Server-side Telegram manual-reply endpoint.
+- AI pause/resume control UI, currently blocked by an explicit 503 response until the live n8n pause guard is implemented.
+
+Sample rows in the dashboard are clearly marked as preview data and must not be mistaken for real users.
+
+## Existing integration
+- n8n workflow: `Client Progress Manager` (workflow ID `FlrM2n4gfrGFgQFF`).
+- Existing data table IDs: `client_progress` = `yC8taftOgA9mXftw`; `task_submissions` = `trjvYIR4ee5ZpWas`.
+- Existing webhook path: `anychat-client-progress`. Do not expose a privileged n8n webhook directly to the browser.
+- Telegram updates currently arrive through the existing Telegram Trigger. Do not register a second Telegram webhook on the same bot token.
+
+## Vercel environment variables
+
+Configure these as **server-only** environment variables in Vercel (never prefix them with `NEXT_PUBLIC_`):
+
+- `DASHBOARD_ADMIN_PASSWORD`: a new, strong password used only for this dashboard.
+- `DASHBOARD_SESSION_SECRET`: a cryptographically random secret, at least 32 bytes.
+- `N8N_BASE_URL`: base URL of the self-hosted n8n instance, with no trailing slash.
+- `N8N_API_KEY`: n8n API key with only the needed access.
+- `N8N_CLIENT_PROGRESS_TABLE_ID`: optional; defaults to the existing client_progress table ID.
+- `N8N_TASK_SUBMISSIONS_TABLE_ID`: optional; defaults to the existing task_submissions table ID.
+- `TELEGRAM_BOT_TOKEN`: bot token needed for manual Telegram replies; keep it only in the server environment.
+- `N8N_USER_CONTROLS_TABLE_ID`: intentionally not sufficient by itself; set it only after creating the table and installing/validating the live workflow pause guard.
+
+Do not commit real environment values or share secrets in chat.
+
+## Remaining integration work
+1. Add a durable `conversation_messages` table and log inbound Telegram updates and all outgoing bot/admin messages. Store event time, Telegram message ID, direction, user/chat ID, text/caption, media metadata, and delivery status. Never log OTPs, passwords, PINs, or other authentication secrets.
+2. Connect the dashboard message view to that log, including pagination for long conversations.
+3. Create a `user_controls` data table and add a per-user pause guard before the current workflow's automated text and photo branches. The dashboard endpoint deliberately returns an error until this is validated.
+4. Add audited admin actions and confirm the outgoing Telegram send result before showing messages as sent.
+5. Finish Vercel project linking and deployment after the Vercel account connection has permission for the intended team.
+6. Run build checks and end-to-end tests for login, read-only data, manual reply, pause/resume, and multi-task progress.
 
 ## Security requirements
-- Admin-only access.
-- Server-side authorization for every endpoint, especially manual messaging and AI pause/resume.
-- Per-user pause state; a paused user must not receive automated replies while still allowing admin replies.
-- Auditable admin actions and idempotent message logging.
-- Do not expose n8n webhook URLs with privileged actions, Telegram tokens, phone numbers, or screenshot file IDs to public clients.
-- Treat screenshots and AI classifications as untrusted input. A dashboard label must not independently approve a financial account or promise payments.
-
-## Implementation status
-This README is a plan only. The dashboard application and its secure backend have not yet been implemented or deployed.
+- Every API route is admin-authenticated and checks cross-origin mutations.
+- Telegram/n8n credentials remain server-side.
+- Paused users must not receive automated replies, while manual admin replies remain available.
+- Log actions and avoid claiming a message was sent unless Telegram confirms success.
+- Screenshots and AI classifications are untrusted data; a dashboard label alone must not promise payment or represent broker-side account approval.
