@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Activity, Bot, CheckCheck, ChevronRight, CirclePause, CirclePlay, Clock3, MessageCircle, Search, Send, ShieldCheck, Users, WalletCards, AlertTriangle, Image as ImageIcon, Menu, X, RefreshCw, LogOut } from "lucide-react";
 import styles from "./dashboard.module.css";
 
@@ -107,4 +107,4 @@ export default function DashboardPage() {
   </section>
  </main>;
 }
-function Metric({icon,label,value,foot}:{icon:React.ReactNode;label:string;value:string;foot:string}){return <div className={styles.metric}><div className={styles.metricTop}><span>{label}</span><div className={styles.metricIcon}>{icon}</div></div><strong>{value}</strong><small>{foot}</small></div>;}
+function Metric({icon,label,value,foot}:{icon:ReactNode;label:string;value:string;foot:string}){return <div className={styles.metric}><div className={styles.metricTop}><span>{label}</span><div className={styles.metricIcon}>{icon}</div></div><strong>{value}</strong><small>{foot}</small></div>;}
