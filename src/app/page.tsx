@@ -20,7 +20,7 @@ export default function DashboardPage() {
  const [clients,setClients] = useState(sampleClients);
  const [selectedId,setSelectedId] = useState(sampleClients[0].id);
  const [search,setSearch] = useState("");
- const [filter,setFilter] = useState("All users");
+ const [filters,setFilters] = useState<string[]>([]);
  const [unreadIds,setUnreadIds] = useState<string[]>([]);
  const [selectedTaskTab,setSelectedTaskTab] = useState(0);
  const [message,setMessage] = useState("");
@@ -90,7 +90,7 @@ export default function DashboardPage() {
   finally{setBusy(false);}
  }
  async function logout(){await fetch("/api/auth",{method:"DELETE"});location.replace("/login");}
- const filtered=useMemo(()=>clients.filter(c=>(c.name.toLowerCase().includes(search.toLowerCase())||c.id.includes(search)||c.username.toLowerCase().includes(search.toLowerCase()))&&(filter==="All users"||(filter==="AI paused"&&c.paused)||(filter==="Needs attention"&&/proof|waiting|error|attention/i.test(c.status))||(filter==="Unread"&&unreadIds.includes(c.id)))),[clients,search,filter,unreadIds]);
+ const filtered=useMemo(()=>clients.filter(c=>(c.name.toLowerCase().includes(search.toLowerCase())||c.id.includes(search)||c.username.toLowerCase().includes(search.toLowerCase()))&&filters.every(f=>f==="Unread"?unreadIds.includes(c.id):f==="AI paused"?c.paused:f==="Needs attention"?/proof|waiting|error|attention/i.test(c.status):f==="Reached Task 1"?Boolean(c.currentTaskId&&(["task_1_angel_one","task_2_choice_finx","task_3","completed"].includes(c.currentTaskId)||c.completedTaskIds?.includes("task_1_angel_one"))):true)),[clients,search,filters,unreadIds]);
  const active=clients.filter(c=>!c.paused).length;
  useEffect(()=>{if(!selectedId)return;const latest=clients.find(c=>c.id===selectedId)?.messages.filter(m=>m.direction==="user").at(-1);if(latest){const store:Record<string,number>={};try{Object.assign(store,JSON.parse(localStorage.getItem("aarohi_last_read_v1")||"{}"));}catch{}store[selectedId]=Date.now();localStorage.setItem("aarohi_last_read_v1",JSON.stringify(store));setUnreadIds(prev=>prev.filter(id=>id!==selectedId));}},[selectedId,clients]);
  const proofCount=clients.filter(c=>/proof|complete/i.test(c.status)).length;
@@ -114,7 +114,7 @@ export default function DashboardPage() {
     <div className={styles.metrics}><Metric icon={<Users/>} label="Total clients" value={String(clients.length)} foot={connected?"From n8n":"Sample records"}/><Metric icon={<MessageCircle/>} label="Active conversations" value={String(active)} foot={connected?"Current control state":"Sample records"}/><Metric icon={<CheckCheck/>} label="Proofs / completions" value={String(proofCount)} foot={connected?"From workflow status":"Sample records"}/><Metric icon={<AlertTriangle/>} label="Needs attention" value={String(attention)} foot={connected?"From workflow status":"Sample records"}/></div>
     <div className={styles.workspaceGrid}>
      <section className={styles.panel}><div className={styles.panelHead}><div><h2>Conversations</h2><p>Select a client to inspect the chat</p></div><span className={styles.liveTag}><span></span>{connected?"Connected":"Preview"}</span></div>
-      <div className={styles.filters}><div className={styles.search}><Search size={16}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name, username, Telegram ID"/></div><select value={filter} onChange={e=>setFilter(e.target.value)}><option>All users</option><option>Unread</option><option>AI paused</option><option>Needs attention</option></select></div>
+      <div className={styles.filters}><div className={styles.search}><Search size={16}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name, username, Telegram ID"/></div></div>
       <div className={styles.clientList}>{filtered.map(c=><button key={c.id} onClick={()=>{setSelectedId(c.id);setMessage("");}} className={`${styles.clientRow} ${selectedId===c.id?styles.clientSelected:""}`}><div className={styles.clientAvatar}>{c.name.split(" ").map(s=>s[0]).join("").slice(0,2)}</div><div className={styles.clientMeta}><strong>{c.name}</strong><small>{c.username||("Telegram ID "+c.id)} · {c.last}</small><span>{c.status}</span>{unreadIds.includes(c.id)&&<small className={styles.unreadBadge}>Unread</small>}</div><div className={styles.rowStatus}><i className={c.paused?styles.pausedDot:styles.activeDot}></i></div></button>)}{filtered.length===0&&<div className={styles.noClients}>No clients found for this filter.</div>}</div>
      </section>
      {selected&&<section className={styles.panel+" "+styles.chatPanel}>
