@@ -56,7 +56,29 @@ export default function DashboardPage() {
    const storedRead: Record<string, number> = {}; try { Object.assign(storedRead, JSON.parse(localStorage.getItem("aarohi_last_read_v1")||"{}")); } catch {}
    setUnreadIds([...latestIncomingByClient.entries()].filter(([id,stamp])=>stamp>(Number(storedRead[id])||0)&&id!==selectedId).map(([id])=>id));
 
-   const mapped:Client[]=rows.filter((r:any)=>/^\d+$/.test(String(r.client_id||""))).map((r:any)=>{
+   // Merge progress records with any Telegram IDs present in the durable conversation log.
+   // A new conversation remains selectable even if client_progress hasn't been saved yet.
+   const progressRows = new Map<string, any>();
+   for (const row of rows) {
+    const id = String(row.client_id || "");
+    if (/^\d+$/.test(id)) progressRows.set(id, row);
+   }
+   for (const m of messageRows) {
+    const id = String(m?.chat_id ?? m?.user_id ?? "").trim();
+    if (!/^\d+$/.test(id) || progressRows.has(id)) continue;
+    progressRows.set(id, {
+     client_id:id,
+     first_name:String(m.first_name || "Telegram user"),
+     flow_step:"conversation_started",
+     current_task:"",
+     proof_status:"not_submitted",
+     completed_tasks:"[]",
+     phone_number:"",
+     ai_paused:false,
+     updatedAt:m.event_time || m.createdAt || new Date().toISOString()
+    });
+   }
+   const mapped:Client[]=Array.from(progressRows.values()).map((r:any)=>{
     let completed:any[]=[];try{const parsed=JSON.parse(r.completed_tasks||"[]");if(Array.isArray(parsed))completed=parsed.map(String);}catch{}
     const completedTaskIds=taskIds.filter(id=>completed.includes(id));
     const currentTaskId=String(r.current_task||"");
@@ -64,7 +86,7 @@ export default function DashboardPage() {
     const task:Task=currentTaskId.includes("choice")?"Choice FinX":currentTaskId.includes("task_3")||currentTaskId==="completed"?"Bajaj":"Angel One";
     const clientId=String(r.client_id);
     const clientMessages:Message[]=messageRows
-      .filter((m:any)=>String(m.chat_id||"")===clientId)
+      .filter((m:any)=>String(m.chat_id ?? m.user_id ?? "").trim()===clientId)
       .map((m:any,index:number)=>({m,index,stamp:asMillis(m.event_time)||asMillis(m.createdAt)||index}))
       .sort((a:any,b:any)=>a.stamp-b.stamp||a.index-b.index)
       .map(({m,stamp}:any)=>({direction:String(m.direction)==="inbound"?"user":String(m.send_status||"")==="manual_admin"?"admin":String(m.direction)==="outbound"?"bot":"admin",text:String(m.text||m.caption||((m.message_type==="photo"||m.message_type==="document")?"Attachment received":"")),time:new Date(stamp||Date.now()).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"}),kind:(m.message_type==="photo"||m.message_type==="document"||m.file_id)?"image":"text",fileId:m.file_id?String(m.file_id):undefined}))
@@ -126,7 +148,7 @@ export default function DashboardPage() {
      {selected&&<section className={styles.panel+" "+styles.chatPanel}>
       <div className={styles.chatHead}><div className={styles.clientAvatar+" "+styles.bigAvatar}>{selected.name.split(" ").map(s=>s[0]).join("").slice(0,2)}</div><div className={styles.chatTitle}><h2>{selected.name}</h2><p>Telegram ID {selected.id}</p><div className={styles.chips}><span className={styles.taskChip}>{selected.task}</span><span className={selected.paused?styles.pausedChip:styles.activeChip}>{selected.paused?"AI paused":"AI active / unknown"}</span></div></div><button disabled={busy||!connected} onClick={()=>togglePause(selected)} className={selected.paused?styles.resumeButton:styles.pauseButton}>{selected.paused?<CirclePlay size={16}/>:<CirclePause size={16}/>} {selected.paused?"Resume AI":"Pause AI"}</button></div>
       <div className={styles.chatDetails}><span><WalletCards size={14}/>{selected.phone||"Phone not captured"}</span><span><Clock3 size={14}/>Last active {selected.last}</span></div>
-      <div className={styles.messages} ref={messagesContainerRef}>{selected.messages.length?selected.messages.map((m,i)=><div key={i} className={`${styles.messageRow} ${m.direction==="user"?styles.incoming:styles.outgoing}`}><div className={styles.messageBubble}><small>{m.direction==="user"?"USER":m.direction==="admin"?"YOU · ADMIN":"AAROHI AI"} · {m.time}</small>{m.kind==="image"&&(m.fileId?<img className={styles.telegramImage} src={`/api/telegram-file?file_id=${encodeURIComponent(m.fileId)}`} alt="Telegram screenshot attachment" loading="lazy"/>:<div className={styles.imagePlaceholder}><ImageIcon size={28}/><span>Attachment image unavailable (no Telegram file ID)</span></div>)}<p>{m.text}</p></div></div>):<div className={styles.emptyChat}><MessageCircle size={24}/><b>No message log connected</b><span>Connect inbound and outbound message logging in n8n to show the full chat here.</span></div>}<div ref={messagesEndRef}/></div>
+      <div className={styles.messages} ref={messagesContainerRef}>{selected.messages.length?selected.messages.map((m,i)=><div key={i} className={`${styles.messageRow} ${m.direction==="user"?styles.incoming:styles.outgoing}`}><div className={styles.messageBubble}><small>{m.direction==="user"?"USER":m.direction==="admin"?"YOU · ADMIN":"AAROHI AI"} · {m.time}</small>{m.kind==="image"&&(m.fileId?<img className={styles.telegramImage} src={`/api/telegram-file?file_id=${encodeURIComponent(m.fileId)}`} alt="Telegram screenshot attachment" loading="lazy"/>:<div className={styles.imagePlaceholder}><ImageIcon size={28}/><span>Attachment image unavailable (no Telegram file ID)</span></div>)}<p>{m.text}</p></div></div>):<div className={styles.emptyChat}><MessageCircle size={24}/><b>No messages recorded yet</b><span>This client is listed, but no messages for this Telegram ID are in the log yet. Refresh after the next message.</span></div>}<div ref={messagesEndRef}/></div>
       <div className={styles.composer}><textarea value={message} onChange={e=>setMessage(e.target.value)} placeholder="Write a manual reply…" rows={2}/><button onClick={sendReply} disabled={!message.trim()||busy||!connected}><Send size={17}/>Send reply</button></div><div className={styles.chatDisclaimer}>Manual send requires a server-side Telegram token. AI pause is disabled until n8n checks persisted per-user control state.</div>
      </section>}
     </div>
