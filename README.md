@@ -44,6 +44,13 @@ Do not commit real environment values or share secrets in chat.
 5. Finish Vercel project linking and deployment after the Vercel account connection has permission for the intended team.
 6. Run build checks and end-to-end tests for login, read-only data, manual reply, pause/resume, and multi-task progress.
 
+## Conversation inbox troubleshooting
+
+- The dashboard reads progress rows and message rows from the same n8n instance. Message rows are fetched with cursor pagination so recent conversations aren't hidden after the first page.
+- The inbox includes Telegram IDs found in conversation history even if a progress row has not been written yet.
+- Message matching uses Telegram chat ID, with user ID as a fallback only when chat ID is absent.
+- Production verification should cover a new user sending `/start`, the welcome reply, a text reply, and the same user's dashboard conversation.
+
 ## Security requirements
 - Every API route is admin-authenticated and checks cross-origin mutations.
 - Telegram/n8n credentials remain server-side.
