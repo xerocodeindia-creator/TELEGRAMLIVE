@@ -13,14 +13,14 @@ export async function POST(req: Request) {
 
   // Use the live n8n Telegram credential so manual replies cannot drift from the bot
   // token configured on the active Telegram Trigger and image proxy.
-  const n8nBaseUrl = process.env.N8N_BASE_URL?.replace(/\/+$/, "");
+  const proxyBaseUrl = process.env.N8N_BASE_URL?.replace(/\/+$/, "");
   const proxySecret = process.env.N8N_TELEGRAM_IMAGE_PROXY_SECRET;
   if (!n8nBaseUrl || !proxySecret) {
     return NextResponse.json({ error: "Telegram manual reply proxy is not configured on the server." }, { status: 503, headers: privateJsonHeaders });
   }
   let data: any;
   try {
-    const proxyResponse = await fetch(`${n8nBaseUrl}/webhook/telegram-manual-reply-${proxySecret}`, {
+    const proxyResponse = await fetch(`${proxyBaseUrl}/webhook/telegram-manual-reply-${proxySecret}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Accept": "application/json" },
       body: JSON.stringify({ chatId, text }),
