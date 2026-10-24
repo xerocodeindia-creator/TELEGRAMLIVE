@@ -33,11 +33,10 @@ export async function GET(request: NextRequest) {
   const proxySecret = process.env.N8N_TELEGRAM_IMAGE_PROXY_SECRET;
   if (n8nBaseUrl && proxySecret) {
     try {
-      const response = await fetch(`${n8nBaseUrl}/webhook/telegram-image-proxy`, {
+      const response = await fetch(`${n8nBaseUrl}/webhook/telegram-image-proxy-${proxySecret}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-image-proxy-key": proxySecret,
           "Accept": "image/*",
         },
         body: JSON.stringify({ file_id: fileId }),
