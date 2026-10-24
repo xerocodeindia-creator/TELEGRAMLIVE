@@ -13,7 +13,7 @@ export async function POST(req: Request) {
 
   // Use the live n8n Telegram credential so manual replies cannot drift from the bot
   // token configured on the active Telegram Trigger and image proxy.
-  const n8nBaseUrl = process.env.N8N_BASE_URL?.replace(/\\/+$/, "");
+  const n8nBaseUrl = process.env.N8N_BASE_URL?.replace(/\/+$/, "");
   const proxySecret = process.env.N8N_TELEGRAM_IMAGE_PROXY_SECRET;
   if (!n8nBaseUrl || !proxySecret) {
     return NextResponse.json({ error: "Telegram manual reply proxy is not configured on the server." }, { status: 503, headers: privateJsonHeaders });
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
   // Persist the successfully sent admin reply to the shared n8n Data Table.
   let logged = false;
   let logError = "";
-  const n8nBaseUrl = process.env.N8N_BASE_URL;
+  const n8nBaseUrl = process.env.N8N_BASE_URL?.replace(/\/+$/, "");
   const n8nApiKey = process.env.N8N_API_KEY;
   const messagesTable = process.env.N8N_CONVERSATION_MESSAGES_TABLE_ID || "PHT0vNxeMxik6br6";
   if (n8nBaseUrl && n8nApiKey) {
