@@ -8,7 +8,7 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const chatId = String(body.chatId || "").trim();
   const text = String(body.text || "").trim();
-  if (!/^-?\\d+$/.test(chatId)) return jsonError("Invalid Telegram chat ID");
+  if (!/^-?\d+$/.test(chatId)) return jsonError("Invalid Telegram chat ID");
   if (!text || text.length > 4000) return jsonError("Message must be between 1 and 4000 characters");
 
   // Use the live n8n Telegram credential so manual replies cannot drift from the bot
