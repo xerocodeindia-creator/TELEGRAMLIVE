@@ -5,21 +5,38 @@ export async function POST(req: Request) {
   if (!await requireAdmin()) return jsonError("Unauthorized", 401);
   const origin = req.headers.get("origin");
   if (origin && new URL(origin).host !== new URL(req.url).host) return jsonError("Cross-origin request denied", 403);
-  const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  if (!botToken) return NextResponse.json({ error: "Telegram manual messaging is not configured on the server." }, { status: 503, headers: privateJsonHeaders });
   const body = await req.json().catch(() => ({}));
   const chatId = String(body.chatId || "").trim();
   const text = String(body.text || "").trim();
-  if (!/^-?\d+$/.test(chatId)) return jsonError("Invalid Telegram chat ID");
+  if (!/^-?\\d+$/.test(chatId)) return jsonError("Invalid Telegram chat ID");
   if (!text || text.length > 4000) return jsonError("Message must be between 1 and 4000 characters");
-  const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
-    cache: "no-store"
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok || !data.ok) return NextResponse.json({ error: "Telegram send failed", detail: data.description || "Unknown Telegram API error" }, { status: 502, headers: privateJsonHeaders });
+
+  // Use the live n8n Telegram credential so manual replies cannot drift from the bot
+  // token configured on the active Telegram Trigger and image proxy.
+  const n8nBaseUrl = process.env.N8N_BASE_URL?.replace(/\\/+$/, "");
+  const proxySecret = process.env.N8N_TELEGRAM_IMAGE_PROXY_SECRET;
+  if (!n8nBaseUrl || !proxySecret) {
+    return NextResponse.json({ error: "Telegram manual reply proxy is not configured on the server." }, { status: 503, headers: privateJsonHeaders });
+  }
+  let data: any;
+  try {
+    const proxyResponse = await fetch(`${n8nBaseUrl}/webhook/telegram-manual-reply-${proxySecret}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Accept": "application/json" },
+      body: JSON.stringify({ chatId, text }),
+      cache: "no-store"
+    });
+    data = await proxyResponse.json().catch(() => ({}));
+    if (!proxyResponse.ok || !data.ok) {
+      return NextResponse.json(
+        { error: "Telegram send failed", detail: data.description || data.message || `n8n proxy returned HTTP ${proxyResponse.status}` },
+        { status: 502, headers: privateJsonHeaders }
+      );
+    }
+    data = { ok: true, result: data.result || {} };
+  } catch {
+    return NextResponse.json({ error: "Unable to reach the Telegram reply service." }, { status: 502, headers: privateJsonHeaders });
+  }
 
   // Persist the successfully sent admin reply to the shared n8n Data Table.
   let logged = false;
