@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function imageResponse(response: Response) {
+function proxyImageResponse(response: Response) {
   const upstreamType = (response.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
   if (!upstreamType.startsWith("image/")) return null;
   return new NextResponse(response.body, {
