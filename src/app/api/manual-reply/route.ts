@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   // token configured on the active Telegram Trigger and image proxy.
   const proxyBaseUrl = process.env.N8N_BASE_URL?.replace(/\/+$/, "");
   const proxySecret = process.env.N8N_TELEGRAM_IMAGE_PROXY_SECRET;
-  if (!n8nBaseUrl || !proxySecret) {
+  if (!proxyBaseUrl || !proxySecret) {
     return NextResponse.json({ error: "Telegram manual reply proxy is not configured on the server." }, { status: 503, headers: privateJsonHeaders });
   }
   let data: any;
