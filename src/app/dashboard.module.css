@@ -130,3 +130,16 @@
 :global(html[data-theme="dark"]) .clientRow.clientSelected{background:#221e48}
 .themeToggle{display:inline-flex;align-items:center;gap:6px;width:auto;padding:0 10px;font-size:12px;font-weight:600}
 @media(max-width:500px){.themeToggle span{display:none}}
+/* Chat box fixes (25 Oct 2026): jump-to-latest button, compact composer, safe-area padding on phones */
+.messages{position:relative}
+.jumpLatest{position:sticky;bottom:8px;align-self:center;z-index:2;border:0;border-radius:999px;background:#6b5ce7;color:#fff;font-size:12px;font-weight:700;padding:8px 14px;box-shadow:0 6px 18px #2a1f7a40;cursor:pointer;flex-shrink:0}
+.messageRow{flex-shrink:0}
+.telegramImage{display:block;min-height:120px;object-fit:contain}
+@media(max-width:850px){
+.mainArea:has(.mobileChatVisible) .composer{padding:10px 12px calc(10px + env(safe-area-inset-bottom))!important;align-items:flex-end!important}
+.mainArea:has(.mobileChatVisible) .composer textarea{min-height:46px!important;max-height:120px!important;resize:none!important;padding:11px 12px!important}
+.mainArea:has(.mobileChatVisible) .composer button{min-width:46px!important;min-height:46px!important}
+.mainArea:has(.mobileChatVisible) .chatDetails{font-size:11px!important}
+.mainArea:has(.mobileChatVisible) .chatHead .chips{margin-top:4px}
+}
+:global(html[data-theme="dark"]) .jumpLatest{background:#7a6df0;box-shadow:0 6px 18px #00000066}
