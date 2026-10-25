@@ -35,3 +35,98 @@
 
 /* When a mobile conversation is open, make it the primary full-screen view */
 @media(max-width:850px){.mainArea:has(.mobileChatVisible) .topbar{display:none!important}.mainArea:has(.mobileChatVisible) .content{padding:0!important;margin:0!important;max-width:none!important}.mainArea:has(.mobileChatVisible) .pageHead,.mainArea:has(.mobileChatVisible) .notice,.mainArea:has(.mobileChatVisible) .metrics,.mainArea:has(.mobileChatVisible) .progressPanel,.mainArea:has(.mobileChatVisible) .footer{display:none!important}.mainArea:has(.mobileChatVisible) .workspaceGrid{display:block!important;margin:0!important;padding:0!important}.mainArea:has(.mobileChatVisible) .chatPanel.mobileChatVisible{display:flex!important;width:100%!important;height:100dvh!important;min-height:100dvh!important;max-height:100dvh!important;border-radius:0!important;border:0!important;box-shadow:none!important}.mainArea:has(.mobileChatVisible) .chatHead{padding:12px 14px!important;align-items:center!important}.mainArea:has(.mobileChatVisible) .chatDetails{padding:9px 14px!important}.mainArea:has(.mobileChatVisible) .messages{flex:1 1 0!important;min-height:0!important;height:auto!important;max-height:none!important;padding:14px!important;overflow-y:auto!important}.mainArea:has(.mobileChatVisible) .composer{padding:12px 14px!important}.mainArea:has(.mobileChatVisible) .chatDisclaimer{padding:0 14px 12px!important}}
+
+/* ===== Dark mode (auto-generated overrides; toggled via html[data-theme="dark"]) ===== */
+:global(html[data-theme="dark"]) .shell{background:#1c2433;color:#d4dcec}
+:global(html[data-theme="dark"]) .topbar{background:#161d2a;border-bottom:1px solid #273145}
+:global(html[data-theme="dark"]) .crumb{color:#99a2b2}
+:global(html[data-theme="dark"]) .crumb b{color:#c3ccdb}
+:global(html[data-theme="dark"]) .previewPill{color:#a5acb8;background:#1c2433;border:1px solid #273145}
+:global(html[data-theme="dark"]) .avatar{background:#211e48;color:#7d74dd}
+:global(html[data-theme="dark"]) .iconButton{color:#adb4c2}
+:global(html[data-theme="dark"]) .iconButton:hover{background:#1c2433}
+:global(html[data-theme="dark"]) .eyebrow{color:#9ca2b2}
+:global(html[data-theme="dark"]) .pageHead p{color:#9ca4b3}
+:global(html[data-theme="dark"]) .secondaryButton{border:1px solid #273145;color:#bbc3d1}
+:global(html[data-theme="dark"]) .notice{color:#8e81d5;background:#231e48;border:1px solid #3c356e}
+:global(html[data-theme="dark"]) .metric{border:1px solid #273145;background:#161d2a}
+:global(html[data-theme="dark"]) .metricTop{color:#a5adba}
+:global(html[data-theme="dark"]) .metricIcon{background:#201e48;color:#695ae4}
+:global(html[data-theme="dark"]) .metric>small{color:#9099aa}
+:global(html[data-theme="dark"]) .panel,:global(html[data-theme="dark"]) .progressPanel{background:#161d2a;border:1px solid #273145}
+:global(html[data-theme="dark"]) .panelHead p{color:#969faf}
+:global(html[data-theme="dark"]) .liveTag{color:#9ea6b4;background:#1c2433;border:1px solid #273145}
+:global(html[data-theme="dark"]) .search{border:1px solid #273145;color:#939dac}
+:global(html[data-theme="dark"]) .search input{color:#c7cfdf}
+:global(html[data-theme="dark"]) .filters select{border:1px solid #273145;background:#161d2a;color:#abb3c0}
+:global(html[data-theme="dark"]) .clientList{border-top:1px solid #273145}
+:global(html[data-theme="dark"]) .clientRow{border-bottom:1px solid #273145}
+:global(html[data-theme="dark"]) .clientSelected{background:#221e48}
+:global(html[data-theme="dark"]) .clientAvatar{background:#211e48;color:#8d88d2}
+:global(html[data-theme="dark"]) .clientRow:nth-child(2n) .clientAvatar{background:#1e483c;color:#a5e6d7}
+:global(html[data-theme="dark"]) .clientRow:nth-child(3n) .clientAvatar{background:#48361e;color:#e7bf8d}
+:global(html[data-theme="dark"]) .clientMeta strong{color:#cad2e0}
+:global(html[data-theme="dark"]) .clientMeta small{color:#939dac}
+:global(html[data-theme="dark"]) .clientMeta span{color:#a4abb9}
+:global(html[data-theme="dark"]) .chatHead{border-bottom:1px solid #273145}
+:global(html[data-theme="dark"]) .chatTitle p{color:#969faf}
+:global(html[data-theme="dark"]) .taskChip,:global(html[data-theme="dark"]) .activeChip,:global(html[data-theme="dark"]) .pausedChip{border:1px solid #3a356e;background:#241e48;color:#7f70d9}
+:global(html[data-theme="dark"]) .activeChip{border-color:#356e5a;background:#1e4836;color:#9fe7d0}
+:global(html[data-theme="dark"]) .pausedChip{border-color:#6e5735;background:#48391e;color:#e9c48e}
+:global(html[data-theme="dark"]) .pauseButton,:global(html[data-theme="dark"]) .resumeButton{border:1px solid #6e3539;background:#481e1e;color:#d48089}
+:global(html[data-theme="dark"]) .resumeButton{border-color:#356e5b;background:#1e4833;color:#a3ead8}
+:global(html[data-theme="dark"]) .chatDetails{border-bottom:1px solid #273145;color:#969faf}
+:global(html[data-theme="dark"]) .messages{background:#1c2433}
+:global(html[data-theme="dark"]) .messageBubble{border:1px solid #273145;background:#161d2a}
+:global(html[data-theme="dark"]) .outgoing .messageBubble{background:#201e48;border-color:#3b356e}
+:global(html[data-theme="dark"]) .messageBubble small{color:#969faf}
+:global(html[data-theme="dark"]) .messageBubble p{color:#bbc3d2}
+:global(html[data-theme="dark"]) .telegramImage{border:1px solid #273145;background:#161d2a}
+:global(html[data-theme="dark"]) .imagePlaceholder{background:#1c2433;border:1px dashed #273145;color:#919cad}
+:global(html[data-theme="dark"]) .composer{border-top:1px solid #273145}
+:global(html[data-theme="dark"]) .composer textarea{border:1px solid #273145;color:#c3cbda}
+:global(html[data-theme="dark"]) .composer textarea:focus{border-color:#3b356e}
+:global(html[data-theme="dark"]) .chatDisclaimer{color:#dfbf93}
+:global(html[data-theme="dark"]) .progressCard{border:1px solid #273145;background:#1c2433}
+:global(html[data-theme="dark"]) .doneIcon,:global(html[data-theme="dark"]) .currentIcon,:global(html[data-theme="dark"]) .todoIcon{background:#1e4837;color:#9de9d3}
+:global(html[data-theme="dark"]) .currentIcon{background:#231e48;color:#7364df}
+:global(html[data-theme="dark"]) .todoIcon{background:#1c2433;color:#909aab}
+:global(html[data-theme="dark"]) .doneLabel,:global(html[data-theme="dark"]) .currentLabel,:global(html[data-theme="dark"]) .todoLabel{color:#a3e8d5}
+:global(html[data-theme="dark"]) .currentLabel{color:#8376d5}
+:global(html[data-theme="dark"]) .todoLabel{color:#949caa}
+:global(html[data-theme="dark"]) .progressCard p{color:#969faf}
+:global(html[data-theme="dark"]) .footer{color:#919bac}
+@media(max-width:850px){
+:global(html[data-theme="dark"]) .clientRow:nth-child(odd){border-right:1px solid #273145}
+}
+:global(html[data-theme="dark"]) .emptyChat{color:#919bad}
+:global(html[data-theme="dark"]) .emptyChat b{color:#acb4c2}
+:global(html[data-theme="dark"]) .noClients{color:#919bad}
+:global(html[data-theme="dark"]) .loading{color:#796bdb;background:#1c2433}
+:global(html[data-theme="dark"]) .loading p{color:#a3aab7}
+:global(html[data-theme="dark"]) .taskTab,:global(html[data-theme="dark"]) .taskTabActive{border:1px solid var(--border,#273145);background:var(--panel,#161d2a)}
+:global(html[data-theme="dark"]) .taskTab span,:global(html[data-theme="dark"]) .taskTabActive span{background:#1c2433}
+:global(html[data-theme="dark"]) .taskTabActive{background:#241e48;color:#a59ede}
+:global(html[data-theme="dark"]) .taskTabActive span{background:#231e48}
+:global(html[data-theme="dark"]) .taskCompletedRow{border:1px solid var(--border,#273145)}
+:global(html[data-theme="dark"]) .taskCompletedRow>svg{color:#a7f0d5}
+:global(html[data-theme="dark"]) .unreadBadge{background:#483b1e;color:#ffdea0}
+:global(html[data-theme="dark"]) .filterChip,:global(html[data-theme="dark"]) .filterChipActive{border:1px solid var(--border,#273145);background:var(--panel,#161d2a);color:var(--muted,#aeb4c1)}
+:global(html[data-theme="dark"]) .filterChipActive{background:#241e48;color:#a59ede}
+:global(html[data-theme="dark"]) .clearFilters{color:#7f74db}
+:global(html[data-theme="dark"]) .dateFilter{color:#a4abb9}
+:global(html[data-theme="dark"]) .dateFilter input{border:1px solid #273145;color:#bbc3d1;background:#161d2a}
+@media(max-width:850px){
+:global(html[data-theme="dark"]) .mobileBackButton{border:1px solid #273145;background:#161d2a;color:#9890d6}
+}
+/* Dark mode: hand-tuned extras (page background, native form controls) */
+:global(html[data-theme="dark"]) .shell{background:#0f141d}
+:global(html[data-theme="dark"]) .mainArea{background:#0f141d}
+:global(html[data-theme="dark"]) .search input,:global(html[data-theme="dark"]) .composer textarea,:global(html[data-theme="dark"]) .dateFilter input,:global(html[data-theme="dark"]) .filters select{background:#111723;color:#d4dcec}
+:global(html[data-theme="dark"]) .search input::placeholder,:global(html[data-theme="dark"]) .composer textarea::placeholder{color:#7d879a}
+:global(html[data-theme="dark"]) .pageHead h1,:global(html[data-theme="dark"]) .panelHead h2,:global(html[data-theme="dark"]) .metric strong,:global(html[data-theme="dark"]) .chatTitle h2,:global(html[data-theme="dark"]) .progressCard b{color:#e6ebf5}
+:global(html[data-theme="dark"]) .secondaryButton,:global(html[data-theme="dark"]) .clientRow{background:#161d2a}
+:global(html[data-theme="dark"]) .clientRow:hover{background:#1c2433}
+:global(html[data-theme="dark"]) .clientRow.clientSelected{background:#221e48}
+.themeToggle{display:inline-flex;align-items:center;gap:6px;width:auto;padding:0 10px;font-size:12px;font-weight:600}
+@media(max-width:500px){.themeToggle span{display:none}}

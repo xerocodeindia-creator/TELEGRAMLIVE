@@ -1,8 +1,21 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useRef, type ReactNode } from "react";
-import { Activity, Bot, CheckCheck, ChevronRight, CirclePause, CirclePlay, Clock3, MessageCircle, Search, Send, ShieldCheck, Users, WalletCards, AlertTriangle, Image as ImageIcon, Menu, X, RefreshCw, LogOut } from "lucide-react";
+import { Activity, Bot, CheckCheck, ChevronRight, CirclePause, CirclePlay, Clock3, MessageCircle, Search, Send, ShieldCheck, Users, WalletCards, AlertTriangle, Image as ImageIcon, Menu, X, RefreshCw, LogOut, Moon, Sun } from "lucide-react";
 import styles from "./dashboard.module.css";
+
+function ThemeToggle({ className }: { className: string }) {
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+  useEffect(() => { setTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light"); }, []);
+  const toggle = () => {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    document.documentElement.setAttribute("data-theme", next);
+    try { localStorage.setItem("aarohi-theme", next); } catch {}
+  };
+  const dark = theme === "dark";
+  return <button className={className} onClick={toggle} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"} title={dark ? "Light mode" : "Dark mode"}>{dark ? <Sun size={17}/> : <Moon size={17}/>}<span>{dark ? "Light" : "Dark"}</span></button>;
+}
 
 type Task = "Angel One" | "Choice FinX" | "Bajaj";
 type Message = { direction: "user" | "bot" | "admin"; text: string; time: string; kind?: "image" | "text"; fileId?: string };
@@ -135,7 +148,7 @@ export default function DashboardPage() {
   </aside>
   {mobileNav&&<button className={styles.backdrop} onClick={()=>setMobileNav(false)} aria-label="Close navigation"/>}
   <section className={styles.mainArea}>
-   <header className={styles.topbar}><button className={styles.iconButton+" "+styles.menuButton} onClick={()=>setMobileNav(true)} aria-label="Open menu"><Menu size={19}/></button><div className={styles.crumb}>Workspace <ChevronRight size={14}/> <b>Live conversations</b></div><div className={styles.topRight}><span className={styles.previewPill}><span></span>{connected?"n8n connected":"Preview / partial"}</span><button className={styles.iconButton} onClick={()=>refresh(false)} aria-label="Refresh" disabled={loading}><RefreshCw size={17}/></button><button className={styles.iconButton} onClick={logout} aria-label="Log out"><LogOut size={17}/></button><div className={styles.avatar}>AD</div></div></header>
+   <header className={styles.topbar}><button className={styles.iconButton+" "+styles.menuButton} onClick={()=>setMobileNav(true)} aria-label="Open menu"><Menu size={19}/></button><div className={styles.crumb}>Workspace <ChevronRight size={14}/> <b>Live conversations</b></div><div className={styles.topRight}><span className={styles.previewPill}><span></span>{connected?"n8n connected":"Preview / partial"}</span><ThemeToggle className={styles.iconButton+" "+styles.themeToggle}/><button className={styles.iconButton} onClick={()=>refresh(false)} aria-label="Refresh" disabled={loading}><RefreshCw size={17}/></button><button className={styles.iconButton} onClick={logout} aria-label="Log out"><LogOut size={17}/></button><div className={styles.avatar}>AD</div></div></header>
    <div className={styles.content}>
     <div className={styles.pageHead}><div><div className={styles.eyebrow}>OVERVIEW / OPERATIONS</div><h1>Live conversations</h1><p>Monitor chats, task progress and AI activity from one place.</p></div><button className={styles.secondaryButton} onClick={()=>refresh(false)}><RefreshCw size={15}/>{loading?"Syncing…":"Sync status"}</button></div>
     <div className={styles.notice}><Activity size={17}/><span>{notice}</span></div>
