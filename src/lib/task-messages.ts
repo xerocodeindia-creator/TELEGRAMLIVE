@@ -29,6 +29,7 @@ export const QUICK_REPLIES: { label: string; text: string }[] = [
   { label: "Task 1 link", text: TASK1_LINK },
   { label: "Task 2 link", text: TASK2_LINK },
   { label: "Task 3 link", text: TASK3_LINK },
+  { label: "App login", text: "Play Store se Angel One app download karke uske Home Page ka screenshot bhej dijiye.\n\n📲 Play Store Link: https://play.google.com/store/apps/details?id=com.msf.angelmobile&hl=en" },
   { label: "Group link", text: "WhatsApp group join kar lijiye, saare updates yahin milenge ✅\n🔗 https://chat.whatsapp.com/DU1HnockcVz3P24RiuW6pB" },
   { label: "Screenshot bhejo", text: "Account open hone ke baad profile page ka screenshot bhej dijiye jahan aapka naam aur Client ID dikhe 🙂" },
   { label: "No deposit", text: "Paise add karne ki koi zarurat nahi hai 🙂 Bas account open karke screenshot bhej dijiye." },
