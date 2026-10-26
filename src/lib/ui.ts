@@ -41,6 +41,8 @@ export type Chat = {
   lastTime: number;
   unread: number;
   stage: Stage;
+  /** IST days (YYYY-MM-DD) on which this chat had any message or progress update. */
+  days: Set<string>;
 };
 
 export type Stage = { key: "onboarding" | "t1" | "t2" | "t3" | "done"; short: string; label: string; index: number };

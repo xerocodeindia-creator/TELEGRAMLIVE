@@ -6,7 +6,7 @@ import styles from "./dashboard.module.css";
 import { ChatList } from "@/components/ChatList";
 import { ChatView } from "@/components/ChatView";
 import { Pipeline } from "@/components/Pipeline";
-import { type Chat, type ClientRow, type Controls, type Msg, ms, stageOf, readStore, writeStore } from "@/lib/ui";
+import { type Chat, type ClientRow, type Controls, type Msg, ms, dayKey, stageOf, readStore, writeStore } from "@/lib/ui";
 
 const POLL_VISIBLE = 1500;
 const POLL_HIDDEN = 8000;
@@ -144,6 +144,7 @@ export default function DashboardPage() {
         lastTime: last ? ms(last.time) : ms(client?.updatedAt || ""),
         unread,
         stage: stageOf(client),
+        days: new Set<string>([...list.map(m => ms(m.time)).filter(Boolean).map(dayKey), ...(client?.updatedAt && ms(client.updatedAt) ? [dayKey(ms(client.updatedAt))] : [])]),
       });
     }
     return out.sort((a, b) => b.lastTime - a.lastTime);

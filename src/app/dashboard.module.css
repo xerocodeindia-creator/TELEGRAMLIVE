@@ -51,7 +51,7 @@
 .listHead{padding:12px 12px 8px;border-bottom:1px solid var(--line)}
 .search{display:flex;align-items:center;gap:8px;background:var(--panel-2);border-radius:22px;padding:0 14px;height:40px;color:var(--faint)}
 .search input{flex:1;border:0;background:transparent;outline:none;color:var(--text);min-width:0}
-.filterRow{display:flex;gap:6px;overflow-x:auto;padding:10px 0 2px;scrollbar-width:none}.filterRow::-webkit-scrollbar{display:none}
+.filterRow{display:flex;flex-wrap:wrap;gap:6px;padding:9px 0 2px}.filterRow::-webkit-scrollbar{display:none}
 .chip,.chipActive{flex-shrink:0;border:1px solid var(--line);background:var(--panel);color:var(--muted);border-radius:999px;padding:5px 11px;font-size:12px;font-weight:600;display:flex;gap:5px;align-items:center}
 .chipActive{background:var(--accent);border-color:var(--accent);color:#fff}
 .chip span,.chipActive span{font-size:11px;opacity:.8}
@@ -77,6 +77,17 @@
 .chatRowActive .stageTag{background:rgba(255,255,255,.22);color:#fff}
 .unread{flex-shrink:0;min-width:21px;height:21px;padding:0 6px;border-radius:11px;background:var(--accent);color:#fff;font-size:11.5px;font-weight:700;display:grid;place-items:center}
 .chatRowActive .unread{background:#fff;color:var(--row-active)}
+
+.dateBar{display:flex;align-items:center;gap:4px;margin-top:9px;color:var(--muted);font-size:13px}
+.dateBar>svg{margin-right:2px;color:var(--accent)}
+.dayStep{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--text);display:grid;place-items:center;padding:0}
+.datePick{position:relative;display:inline-flex;align-items:center;height:28px;padding:0 10px;border-radius:8px;border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:700;cursor:pointer;white-space:nowrap}
+.datePick input{position:absolute;inset:0;opacity:0;width:100%;cursor:pointer;border:0;padding:0}
+.dateCount{margin-left:auto;font-size:12px;color:var(--faint);white-space:nowrap}
+.dateLink{border:0;background:transparent;color:var(--accent);font-weight:600;font-size:12.5px;padding:3px 4px}
+.filterDivider{flex-shrink:0;width:1px;background:var(--line);margin:3px 2px}
+.clearChip{flex-shrink:0;display:flex;align-items:center;gap:3px;border:0;background:transparent;color:var(--bad);font-size:12px;font-weight:600;padding:5px 6px}
+.listEmpty .dateLink{margin-top:8px}
 
 /* Chat pane */
 .chatPane{position:relative;display:flex;flex-direction:column;min-height:0;min-width:0;background-color:var(--chat-bg);background-image:radial-gradient(var(--chat-dot) 1.2px,transparent 1.3px);background-size:18px 18px}
