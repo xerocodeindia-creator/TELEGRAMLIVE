@@ -28,7 +28,7 @@ export type ClientRow = {
   t3: string;
 };
 
-export type Controls = { global: { paused: boolean; at: string }; users: Record<string, { paused: boolean; noKyc: boolean }> };
+export type Controls = { global: { paused: boolean; at: string }; users: Record<string, { paused: boolean; noKyc: boolean; humanReply?: boolean }> };
 
 export type Chat = {
   id: string;
@@ -37,6 +37,8 @@ export type Chat = {
   client?: ClientRow;
   paused: boolean;
   noKyc: boolean;
+  /** Paused automatically because an admin replied from the dashboard. */
+  humanReply: boolean;
   last?: Msg;
   lastTime: number;
   unread: number;

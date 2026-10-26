@@ -27,7 +27,7 @@ export async function POST(req: Request) {
       paused_at: paused ? new Date().toISOString() : null,
       reason: isGlobal
         ? (paused ? "HUMAN_MODE: AI off for everyone from dashboard" : "Global AI turned on from dashboard")
-        : (paused ? "Paused from Aarohi dashboard" : "Resumed from Aarohi dashboard"),
+        : (paused ? "HUMAN_PAUSE: Paused from Aarohi dashboard" : "Resumed from Aarohi dashboard"),
     });
     return NextResponse.json({ updated: true, clientId, paused, result }, { headers: privateJsonHeaders });
   } catch (error) {

@@ -148,6 +148,7 @@ export default function DashboardPage() {
         client,
         paused: Boolean(ctl?.paused),
         noKyc: Boolean(ctl?.noKyc),
+        humanReply: Boolean(ctl?.humanReply),
         last,
         lastTime: last ? ms(last.time) : ms(client?.updatedAt || ""),
         unread,
@@ -186,7 +187,7 @@ export default function DashboardPage() {
     const r = await fetch("/api/ai-control", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clientId: chat.id, action }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) { showToast(d.detail || d.error || "AI control failed"); return; }
-    setControls(c => ({ ...c, users: { ...c.users, [chat.id]: { paused: action === "pause", noKyc: false } } }));
+    setControls(c => ({ ...c, users: { ...c.users, [chat.id]: { paused: action === "pause", noKyc: false, humanReply: false } } }));
     showToast(action === "pause" ? `AI paused for ${chat.name}` : `AI resumed for ${chat.name}`);
   }
 
@@ -200,6 +201,10 @@ export default function DashboardPage() {
       if (!r.ok) throw new Error(d.detail || d.error || "Message was not sent");
       // Sent: show as delivered until the logged copy arrives from n8n (then it is replaced).
       setMessages(prev => ({ ...prev, [chatId]: (prev[chatId] || []).map(m => (m.tempKey === tempKey ? { ...m, local: undefined } : m)) }));
+      if (d.aiPausedNow) {
+        setControls(c => ({ ...c, users: { ...c.users, [chatId]: { paused: true, noKyc: false, humanReply: true } } }));
+        showToast("Aapne reply kiya — is user ke liye bot ab chup rahega. Wapas chalu: Resume AI");
+      }
       if (!d.logged) showToast("Message bhej diya, par history mein save nahi hua (n8n API).");
       window.setTimeout(poll, 400);
     } catch (e) {

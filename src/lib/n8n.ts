@@ -129,3 +129,23 @@ export async function logAdminMessage(chatId: string, text: string, telegramMess
 }
 
 export const GLOBAL_CONTROL_ID = "global";
+
+/**
+ * After an admin replies to a user from the dashboard, hand that user over to humans:
+ * the workflow then sends them nothing automatic (after Task 1) until someone presses "Resume AI".
+ * An existing pause (e.g. NO_KYC block or a manual pause) is left untouched.
+ */
+export async function pauseAfterHumanReply(clientId: string) {
+  const { tables } = n8nConfig();
+  const rows = await readRows(tables.controls, { max: 5000 });
+  const row = rows.find(r => String(r.client_id || "") === clientId);
+  const already = row && (row.ai_paused === true || String(row.ai_paused) === "true");
+  if (already) return { paused: true, changed: false };
+  await upsertByClientId(tables.controls, clientId, {
+    ai_paused: true,
+    paused_by: "dashboard_reply",
+    paused_at: new Date().toISOString(),
+    reason: "HUMAN_REPLY: admin replied from dashboard",
+  });
+  return { paused: true, changed: true };
+}

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin, jsonError, privateJsonHeaders } from "@/lib/auth";
-import { sendTelegram, logAdminMessage } from "@/lib/n8n";
+import { sendTelegram, logAdminMessage, pauseAfterHumanReply } from "@/lib/n8n";
 
 export async function POST(req: Request) {
   if (!(await requireAdmin())) return jsonError("Unauthorized", 401);
@@ -29,5 +29,9 @@ export async function POST(req: Request) {
   } catch (error) {
     logError = error instanceof Error ? error.message : "Unknown cloud logging error";
   }
-  return NextResponse.json({ sent: true, logged, logError, messageId: telegramMessageId }, { headers: privateJsonHeaders });
+  // A human has taken over this chat: stop automatic replies for this user until "Resume AI".
+  let aiPaused = false;
+  let aiPausedNow = false;
+  try { const r = await pauseAfterHumanReply(chatId); aiPaused = r.paused; aiPausedNow = r.changed; } catch {}
+  return NextResponse.json({ sent: true, logged, logError, messageId: telegramMessageId, aiPaused, aiPausedNow }, { headers: privateJsonHeaders });
 }

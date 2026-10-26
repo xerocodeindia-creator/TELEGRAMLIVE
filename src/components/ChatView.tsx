@@ -131,7 +131,7 @@ export function ChatView({ chat, messages, visible, globalHuman, connected, onBa
 
   const currentTaskIndex = chat.stage.index;
   const canComplete = currentTaskIndex >= 0 && currentTaskIndex <= 2;
-  const aiState = chat.noKyc ? "Blocked (No KYC)" : chat.paused ? "AI paused" : globalHuman ? "Human mode" : "AI active";
+  const aiState = chat.noKyc ? "Blocked (No KYC)" : chat.humanReply ? "Human handling" : chat.paused ? "AI paused" : globalHuman ? "Human mode" : "AI active";
 
   return (
     <section className={`${styles.chatPane} ${visible ? "" : styles.mobileHidden}`}>
@@ -148,7 +148,7 @@ export function ChatView({ chat, messages, visible, globalHuman, connected, onBa
         <div className={styles.chatActions}>
           <span className={`${styles.aiBadge} ${chat.noKyc ? styles.aiBlocked : chat.paused || globalHuman ? styles.aiPaused : styles.aiActive}`}>{aiState}</span>
           {canComplete && <button className={styles.completeButton} onClick={() => setTaskModal(true)} disabled={!connected} title="Current task complete mark karo aur agla task bhejo"><CircleCheckBig size={16} /><span>Task {currentTaskIndex + 1} complete</span></button>}
-          <button className={chat.paused ? styles.resumeButton : styles.pauseButton} disabled={aiBusy || !connected} onClick={async () => { setAiBusy(true); try { await onToggleAi(chat); } finally { setAiBusy(false); } }} title={chat.paused ? "Is user ke liye AI chalu karo" : "Sirf is user ke liye AI band karo"}>
+          <button className={chat.paused ? styles.resumeButton : styles.pauseButton} disabled={aiBusy || !connected} onClick={async () => { setAiBusy(true); try { await onToggleAi(chat); } finally { setAiBusy(false); } }} title={chat.paused ? "Is user ko bot wapas de do (auto replies chalu)" : "Sirf is user ke liye bot band karo (Task 1 ke baad koi auto reply nahi)"}>
             {chat.paused ? <CirclePlay size={16} /> : <CirclePause size={16} />}<span>{chat.paused ? "Resume AI" : "Pause AI"}</span>
           </button>
         </div>

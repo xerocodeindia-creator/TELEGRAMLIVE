@@ -29,13 +29,13 @@ function mapClient(r: Row) {
 
 function mapControls(rows: Row[]) {
   let global = { paused: false, at: "" };
-  const users: Record<string, { paused: boolean; noKyc: boolean }> = {};
+  const users: Record<string, { paused: boolean; noKyc: boolean; humanReply: boolean }> = {};
   for (const row of rows) {
     const id = String(row.client_id || "");
     const paused = row.ai_paused === true || String(row.ai_paused) === "true";
     if (id === GLOBAL_CONTROL_ID) { global = { paused, at: String(row.paused_at || row.updatedAt || "") }; continue; }
     if (!/^\d+$/.test(id)) continue;
-    users[id] = { paused, noKyc: paused && String(row.reason || "").startsWith("NO_KYC") };
+    users[id] = { paused, noKyc: paused && String(row.reason || "").startsWith("NO_KYC"), humanReply: paused && String(row.reason || "").startsWith("HUMAN_REPLY") };
   }
   return { global, users };
 }

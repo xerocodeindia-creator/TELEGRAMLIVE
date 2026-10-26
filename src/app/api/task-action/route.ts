@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin, jsonError, privateJsonHeaders } from "@/lib/auth";
-import { n8nConfig, readRows, upsertByClientId, sendTelegram, logAdminMessage } from "@/lib/n8n";
+import { n8nConfig, readRows, upsertByClientId, sendTelegram, logAdminMessage, pauseAfterHumanReply } from "@/lib/n8n";
 import { TASK_COMPLETION, TASK_IDS, type TaskId } from "@/lib/task-messages";
 
 export const dynamic = "force-dynamic";
@@ -68,5 +68,7 @@ export async function POST(req: Request) {
     }
   }
 
-  return NextResponse.json({ updated: true, clientId, taskId, completed, next: plan.next, sentCount: sent.length, failed }, { headers: privateJsonHeaders });
+  let aiPausedNow = false;
+  if (sent.length) { try { aiPausedNow = (await pauseAfterHumanReply(clientId)).changed; } catch {} }
+  return NextResponse.json({ updated: true, clientId, taskId, completed, next: plan.next, sentCount: sent.length, failed, aiPausedNow }, { headers: privateJsonHeaders });
 }
