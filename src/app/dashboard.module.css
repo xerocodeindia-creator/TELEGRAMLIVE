@@ -89,6 +89,10 @@
 .clearChip{flex-shrink:0;display:flex;align-items:center;gap:3px;border:0;background:transparent;color:var(--bad);font-size:12px;font-weight:600;padding:5px 6px}
 .listEmpty .dateLink{margin-top:8px}
 
+.filterToggle,.filterToggleOn{display:none;align-items:center;gap:3px;height:28px;padding:0 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--muted);font-weight:700;font-size:12px}
+.filterToggleOn{border-color:var(--accent);background:var(--accent);color:#fff}
+.bannerShort{display:none}
+
 /* Chat pane */
 .chatPane{position:relative;display:flex;flex-direction:column;min-height:0;min-width:0;background-color:var(--chat-bg);background-image:radial-gradient(var(--chat-dot) 1.2px,transparent 1.3px);background-size:18px 18px}
 .chatEmptyPane{display:grid;place-items:center}
@@ -208,4 +212,17 @@
   .jumpButton{right:14px;bottom:78px}
   .pipelinePage{padding:12px}
   .humanBanner,.errorBanner{padding:8px 12px;font-size:12.5px}
+  .humanBanner{align-items:center;padding:6px 12px}
+  .bannerLong{display:none}.bannerShort{display:inline}
+  .listHead{padding:8px 10px 6px}
+  .search{height:36px}
+  .dateBar{margin-top:7px;font-size:12.5px}
+  .dateBar .dateLink{padding:3px 2px}
+  .filterToggle,.filterToggleOn{display:inline-flex}
+  .filterRow{display:none}
+  .filterRowOpen{display:flex}
+  .chatRow{padding:7px 6px;gap:10px}
+  .avatar{width:42px;height:42px;font-size:15px}
+  .rowTop strong{font-size:14px}
+  .rowPreview{font-size:12.5px}
 }

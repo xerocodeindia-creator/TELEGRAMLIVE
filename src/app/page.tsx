@@ -243,7 +243,7 @@ export default function DashboardPage() {
           <button className={styles.iconButton} onClick={logout} aria-label="Log out" title="Log out"><LogOut size={18} /></button>
         </div>
       </header>
-      {human && <div className={styles.humanBanner}><Hand size={16} /><span><b>Human mode ON:</b> Task 1 link tak onboarding chal raha hai. Uske baad bot kisi ko reply nahi karega — chat se aap khud reply karo aur &quot;Task complete&quot; button se agla task bhejo.</span></div>}
+      {human && <div className={styles.humanBanner}><Hand size={16} /><span className={styles.bannerLong}><b>Human mode ON:</b> Task 1 link tak onboarding chal raha hai. Uske baad bot kisi ko reply nahi karega — chat se aap khud reply karo aur &quot;Task complete&quot; button se agla task bhejo.</span><span className={styles.bannerShort}><b>Human mode ON</b> — Task 1 ke baad bot chup hai</span></div>}
       {connected === false && <div className={styles.errorBanner}><WifiOff size={16} /><span>{error || "n8n se connect nahi ho pa raha."} Retrying…</span></div>}
 
       {view === "chats" ? (

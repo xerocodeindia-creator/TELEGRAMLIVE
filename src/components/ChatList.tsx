@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search, CirclePause, Ban, Check, CheckCheck, CalendarDays, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Search, CirclePause, Ban, Check, CheckCheck, CalendarDays, ChevronLeft, ChevronRight, X, SlidersHorizontal } from "lucide-react";
 import styles from "@/app/dashboard.module.css";
 import { type Chat, avatarColor, dayKey, initials, listTime, preview } from "@/lib/ui";
 
@@ -38,6 +38,8 @@ export function ChatList({ chats, selectedId, onOpen, hidden, loading }: { chats
   const [active, setActive] = useState<FilterKey[]>([]);
   // Default is always today (not remembered between visits); "" = all dates.
   const [date, setDate] = useState<string>(todayKey);
+  // On phones the chips are folded behind a "Filters" button so the chat list gets the screen.
+  const [showChips, setShowChips] = useState(false);
 
   const toggle = (key: FilterKey) => setActive(prev => (prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]));
 
@@ -90,10 +92,13 @@ export function ChatList({ chats, selectedId, onOpen, hidden, loading }: { chats
           </label>
           <button className={styles.dayStep} onClick={() => setDate(d => shiftDay(d || todayKey(), 1))} disabled={!date || date >= todayKey()} aria-label="Next day"><ChevronRight size={16} /></button>
           <span className={styles.dateCount}>{inDate.length} chats</span>
+          <button className={active.length || showChips ? styles.filterToggleOn : styles.filterToggle} onClick={() => setShowChips(v => !v)} aria-expanded={showChips}>
+            <SlidersHorizontal size={14} />{active.length ? active.length : ""}
+          </button>
           {date !== todayKey() && <button className={styles.dateLink} onClick={() => setDate(todayKey())}>Today</button>}
           {date !== "" && <button className={styles.dateLink} onClick={() => setDate("")}>All</button>}
         </div>
-        <div className={styles.filterRow}>
+        <div className={`${styles.filterRow} ${showChips ? styles.filterRowOpen : ""}`}>
           {STATUS_FILTERS.map(chip)}
           <span className={styles.filterDivider} />
           {STAGE_FILTERS.map(chip)}
