@@ -41,6 +41,8 @@ export type Chat = {
   lastTime: number;
   unread: number;
   stage: Stage;
+  /** Task 1 link already sent (has a task stage, or a Task 1/2/3 link message is in the log). */
+  qualified: boolean;
   /** IST days (YYYY-MM-DD) on which this chat had any message or progress update. */
   days: Set<string>;
 };

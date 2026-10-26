@@ -6,9 +6,11 @@ import styles from "./dashboard.module.css";
 import { ChatList } from "@/components/ChatList";
 import { ChatView } from "@/components/ChatView";
 import { Pipeline } from "@/components/Pipeline";
-import { type Chat, type ClientRow, type Controls, type Msg, ms, dayKey, stageOf, readStore, writeStore } from "@/lib/ui";
+import { type Chat, type ClientRow, type Controls, type Msg, ms, dayKey, stageOf } from "@/lib/ui";
 
 const POLL_VISIBLE = 1500;
+// Task 1 / Task 2 / Task 3 link messages (bot or admin). The first one marks the user as "qualified".
+const TASK_LINK_RE = /Name:\s*ANGEL ONE|TASK\s*-\s*2|TASK\s*-\s*3/i;
 const POLL_HIDDEN = 8000;
 
 function ThemeToggle() {
@@ -32,21 +34,7 @@ export default function DashboardPage() {
   const [controls, setControls] = useState<Controls>({ global: { paused: false, at: "" }, users: {} });
   const [selectedId, setSelectedId] = useState("");
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
-  // A chat counts as "being read" only when it is really on screen: desktop layout (list + chat side by side)
-  // or the phone's full-screen chat is open, and the browser tab is visible.
-  const [wide, setWide] = useState(true);
-  const [pageVisible, setPageVisible] = useState(true);
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 821px)");
-    const update = () => setWide(mq.matches);
-    const vis = () => setPageVisible(!document.hidden);
-    update(); vis();
-    mq.addEventListener("change", update);
-    document.addEventListener("visibilitychange", vis);
-    return () => { mq.removeEventListener("change", update); document.removeEventListener("visibilitychange", vis); };
-  }, []);
   const [view, setView] = useState<"chats" | "pipeline">("chats");
-  const [readMap, setReadMap] = useState<Record<string, number>>({});
   const [globalBusy, setGlobalBusy] = useState(false);
   const [toast, setToast] = useState("");
   const cursorRef = useRef<{ sinceId: number; clientsSince: string }>({ sinceId: 0, clientsSince: "" });
@@ -116,7 +104,6 @@ export default function DashboardPage() {
       const auth = await fetch("/api/auth", { cache: "no-store" }).then(r => r.json()).catch(() => ({}));
       if (!auth.authenticated) { location.replace("/login"); return; }
       setAuthReady(true);
-      setReadMap(readStore());
       schedule(0);
     })();
     const onVisible = () => { if (!document.hidden) schedule(0); };
@@ -134,8 +121,6 @@ export default function DashboardPage() {
       .catch(() => historyLoaded.current.delete(selectedId));
   }, [selectedId, mergeMessages]);
 
-  const viewingId = selectedId && view === "chats" && pageVisible && (wide || mobileChatOpen) ? selectedId : "";
-
   const chats: Chat[] = useMemo(() => {
     const ids = new Set<string>([...Object.keys(clients), ...Object.keys(messages)]);
     const out: Chat[] = [];
@@ -145,8 +130,16 @@ export default function DashboardPage() {
       const client = clients[id];
       const last = list[list.length - 1];
       const lastIn = [...list].reverse().find(m => m.direction === "in");
-      const read = readMap[id] || 0;
-      const unread = id === viewingId ? 0 : list.filter(m => m.direction === "in" && m.id > read).length;
+      // Unread = "waiting for a reply", computed only from the shared message log, so every phone/PC
+      // shows the same thing. Only for qualified users (Task 1 link already sent): user messages that came
+      // after the last bot/admin reply AND after the Task 1 message. Messages before Task 1 never count.
+      const stage = stageOf(client);
+      const taskMsgIdx = list.findIndex(m => m.direction !== "in" && TASK_LINK_RE.test(m.text));
+      const qualified = stage.index >= 0 || taskMsgIdx >= 0;
+      let lastOut = -1;
+      for (let i = list.length - 1; i >= 0; i--) if (list[i].direction !== "in") { lastOut = i; break; }
+      const from = Math.max(lastOut + 1, taskMsgIdx + 1);
+      const unread = qualified ? list.slice(from).filter(m => m.direction === "in").length : 0;
       const ctl = controls.users[id];
       out.push({
         id,
@@ -158,28 +151,20 @@ export default function DashboardPage() {
         last,
         lastTime: last ? ms(last.time) : ms(client?.updatedAt || ""),
         unread,
-        stage: stageOf(client),
+        stage,
+        qualified,
         days: new Set<string>([...list.map(m => ms(m.time)).filter(Boolean).map(dayKey), ...(client?.updatedAt && ms(client.updatedAt) ? [dayKey(ms(client.updatedAt))] : [])]),
       });
     }
     return out.sort((a, b) => b.lastTime - a.lastTime);
-  }, [clients, messages, controls, readMap, viewingId]);
+  }, [clients, messages, controls]);
 
   const selected = chats.find(c => c.id === selectedId);
   const selectedMessages = selectedId ? messages[selectedId] || [] : [];
 
-  // Mark the open chat as read up to its newest inbound message.
-  useEffect(() => {
-    if (!viewingId) return;
-    const maxIn = selectedMessages.reduce((acc, m) => (m.direction === "in" && m.id > acc ? m.id : acc), 0);
-    if (maxIn && maxIn > (readMap[viewingId] || 0)) {
-      const next = { ...readStore(), [viewingId]: maxIn };
-      writeStore(next);
-      setReadMap(next);
-    }
-  }, [viewingId, selectedMessages, readMap]);
 
-  const totalUnread = chats.reduce((a, c) => a + c.unread, 0);
+  // Number of chats waiting for a reply (same on every device).
+  const totalUnread = chats.filter(c => c.unread > 0).length;
   useEffect(() => { document.title = totalUnread ? `(${totalUnread}) Aarohi Control Center` : "Aarohi Control Center"; }, [totalUnread]);
 
   async function toggleGlobal() {
