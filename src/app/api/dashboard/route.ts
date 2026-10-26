@@ -1,87 +1,97 @@
 import { NextResponse } from "next/server";
 import { requireAdmin, jsonError, privateJsonHeaders } from "@/lib/auth";
+import { n8nConfig, readRows, GLOBAL_CONTROL_ID, type Row } from "@/lib/n8n";
+import { toMillis, mapMessage } from "@/lib/mappers";
 
-async function getTableRows(baseUrl: string, apiKey: string, tableId: string) {
-  const pageSize = 250;
-  const maxRows = 20000;
-  const rows: any[] = [];
-  let cursor = "";
-  const seenCursors = new Set<string>();
+export const dynamic = "force-dynamic";
 
-  for (let page = 0; page < Math.ceil(maxRows / pageSize); page++) {
-    const url = new URL(`/api/v1/data-tables/${encodeURIComponent(tableId)}/rows`, baseUrl);
-    url.searchParams.set("limit", String(pageSize));
-    url.searchParams.set("sortBy", "createdAt:desc");
-    if (cursor) url.searchParams.set("cursor", cursor);
+// Initial load: recent message history + all clients. After that the page asks only for
+// rows newer than its cursor (sinceId / clientsSince), so each poll is a tiny request.
+const FULL_MESSAGES = 4000;
 
-    const response = await fetch(url, {
-      headers: { "X-N8N-API-KEY": apiKey, "Accept": "application/json" },
-      cache: "no-store"
-    });
-    const text = await response.text();
-    if (!response.ok) throw new Error(`n8n Data Tables API returned ${response.status}: ${text.slice(0, 180)}`);
-
-    const payload = JSON.parse(text);
-    const batch = Array.isArray(payload) ? payload : payload.data || payload.rows || payload.items || [];
-    if (!Array.isArray(batch)) throw new Error("Unexpected n8n Data Tables rows response.");
-    rows.push(...batch);
-
-    const nextCursor = typeof payload.nextCursor === "string" ? payload.nextCursor : "";
-    if (!nextCursor || batch.length === 0 || seenCursors.has(nextCursor) || rows.length >= maxRows) break;
-    seenCursors.add(nextCursor);
-    cursor = nextCursor;
-  }
-
-  return rows;
+function mapClient(r: Row) {
+  let completed: string[] = [];
+  try { const v = JSON.parse(String(r.completed_tasks || "[]")); if (Array.isArray(v)) completed = v.map(String); } catch {}
+  return {
+    id: String(r.client_id || ""),
+    name: String(r.first_name || "Telegram user"),
+    phone: r.phone_number ? String(r.phone_number) : "",
+    flowStep: String(r.flow_step || ""),
+    currentTask: String(r.current_task || ""),
+    proofStatus: String(r.proof_status || ""),
+    completed,
+    updatedAt: r.updatedAt ? String(r.updatedAt) : "",
+    t1: r.task_1_completed_at ? String(r.task_1_completed_at) : "",
+    t2: r.task_2_completed_at ? String(r.task_2_completed_at) : "",
+    t3: r.task_3_completed_at ? String(r.task_3_completed_at) : "",
+  };
 }
-export async function GET() {
-  if (!await requireAdmin()) return jsonError("Unauthorized", 401);
-  const baseUrl = process.env.N8N_BASE_URL;
-  const apiKey = process.env.N8N_API_KEY;
-  const clientsTable = process.env.N8N_CLIENT_PROGRESS_TABLE_ID || "yC8taftOgA9mXftw";
-  const submissionsTable = process.env.N8N_TASK_SUBMISSIONS_TABLE_ID || "trjvYIR4ee5ZpWas";
-  const messagesTable = process.env.N8N_CONVERSATION_MESSAGES_TABLE_ID || "PHT0vNxeMxik6br6";
-  const controlsTable = process.env.N8N_USER_CONTROLS_TABLE_ID || "pS2jwzLkwHQ8or3w";
-  if (!baseUrl || !apiKey) return NextResponse.json({ connected: false, reason: "n8n_not_configured", clients: [], submissions: [], messages: [], messagesConfigured: false }, { status: 200, headers: privateJsonHeaders });
+
+function mapControls(rows: Row[]) {
+  let global = { paused: false, at: "" };
+  const users: Record<string, { paused: boolean; noKyc: boolean }> = {};
+  for (const row of rows) {
+    const id = String(row.client_id || "");
+    const paused = row.ai_paused === true || String(row.ai_paused) === "true";
+    if (id === GLOBAL_CONTROL_ID) { global = { paused, at: String(row.paused_at || row.updatedAt || "") }; continue; }
+    if (!/^\d+$/.test(id)) continue;
+    users[id] = { paused, noKyc: paused && String(row.reason || "").startsWith("NO_KYC") };
+  }
+  return { global, users };
+}
+
+export async function GET(req: Request) {
+  if (!(await requireAdmin())) return jsonError("Unauthorized", 401);
+  const cfg = n8nConfig();
+  if (!cfg.configured) return NextResponse.json({ connected: false, reason: "n8n_not_configured" }, { headers: privateJsonHeaders });
+
+  const params = new URL(req.url).searchParams;
+  const sinceId = Number(params.get("sinceId") || 0);
+  const clientsSince = toMillis(params.get("clientsSince"));
+  const full = !sinceId;
+
   try {
-    const [clients, submissions, messages, controls] = await Promise.all([
-      getTableRows(baseUrl, apiKey, clientsTable),
-      getTableRows(baseUrl, apiKey, submissionsTable),
-      getTableRows(baseUrl, apiKey, messagesTable),
-      getTableRows(baseUrl, apiKey, controlsTable)
+    const messagesPromise = full
+      ? readRows(cfg.tables.messages, { max: FULL_MESSAGES })
+      : readRows(cfg.tables.messages, { max: 2000, pageSize: 100, stop: row => Number(row.id) <= sinceId });
+
+    const clientsPromise = (async () => {
+      if (full || !clientsSince) return { rows: await readRows(cfg.tables.clients, {}), full: true };
+      try {
+        const rows = await readRows(cfg.tables.clients, { sortBy: "updatedAt:desc", pageSize: 50, max: 2000, stop: row => toMillis(row.updatedAt) <= clientsSince });
+        return { rows, full: false };
+      } catch {
+        return { rows: await readRows(cfg.tables.clients, {}), full: true };
+      }
+    })();
+
+    const [messageRows, clientResult, controlRows] = await Promise.all([
+      messagesPromise,
+      clientsPromise,
+      readRows(cfg.tables.controls, { max: 5000 }),
     ]);
-    const controlByClient = new Map<string, any>(
-      controls.map((row: any): [string, any] => [String(row.client_id || ""), row])
-    );
-    const progressById = new Map<string, any>(
-      clients.map((row: any) => [String(row.client_id || ""), row])
-    );
-    // Include conversations that started before their progress record was created.
-    for (const message of messages) {
-      const chatId = String(message?.chat_id || "");
-      if (!/^\\d+$/.test(chatId) || progressById.has(chatId)) continue;
-      progressById.set(chatId, {
-        client_id: chatId,
-        first_name: String(message.first_name || "Telegram user"),
-        flow_step: "conversation_started",
-        current_task: "",
-        proof_status: "not_submitted",
-        completed_tasks: "[]",
-        phone_number: "",
-        ai_paused: false,
-        updatedAt: message.event_time || message.createdAt || new Date().toISOString()
-      });
-    }
-    const clientsWithControls = Array.from(progressById.values()).map((row: any) => ({
-      ...row,
-      ai_paused: Boolean(controlByClient.get(String(row.client_id || ""))?.ai_paused) || Boolean(row.ai_paused)
-    }));
-    const sortedMessages = messages
-      .filter((m: any) => m && m.chat_id != null)
-      .sort((a: any, b: any) => new Date(String(a.event_time || a.createdAt || 0)).getTime() - new Date(String(b.event_time || b.createdAt || 0)).getTime())
-      .slice(-1000);
-    return NextResponse.json({ connected: true, clients: clientsWithControls, submissions, messages: sortedMessages, messagesConfigured: true }, { headers: privateJsonHeaders });
+
+    const messages = messageRows
+      .filter(m => m && (m.chat_id != null || m.user_id != null))
+      .map(mapMessage)
+      .filter(m => /^\d+$/.test(m.chatId))
+      .sort((a, b) => a.id - b.id);
+    const clients = clientResult.rows.map(mapClient).filter(c => /^\d+$/.test(c.id));
+
+    const maxId = messages.reduce((acc, m) => Math.max(acc, m.id), sinceId);
+    const maxClientStamp = clientResult.rows.reduce((acc, r) => Math.max(acc, toMillis(r.updatedAt)), clientsSince);
+
+    return NextResponse.json({
+      connected: true,
+      full,
+      clientsFull: clientResult.full,
+      messages,
+      clients,
+      controls: mapControls(controlRows),
+      cursor: { sinceId: maxId, clientsSince: maxClientStamp ? new Date(maxClientStamp).toISOString() : "" },
+      serverTime: new Date().toISOString(),
+    }, { headers: privateJsonHeaders });
   } catch (error) {
-    return NextResponse.json({ connected: false, reason: "n8n_api_error", error: error instanceof Error ? error.message : "Unknown n8n API error", clients: [], submissions: [], messages: [], messagesConfigured: false }, { status: 502, headers: privateJsonHeaders });
+    return NextResponse.json({ connected: false, reason: "n8n_api_error", error: error instanceof Error ? error.message : "Unknown n8n API error" }, { status: 502, headers: privateJsonHeaders });
   }
 }

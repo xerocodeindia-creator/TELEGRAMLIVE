@@ -1,185 +1,269 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useRef, type ReactNode } from "react";
-import { Activity, Bot, CheckCheck, ChevronRight, CirclePause, CirclePlay, Clock3, MessageCircle, Search, Send, ShieldCheck, Users, WalletCards, AlertTriangle, Image as ImageIcon, Menu, X, RefreshCw, LogOut, Moon, Sun } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Bot, LogOut, Moon, Sun, Hand, MessageCircle, LayoutGrid, WifiOff } from "lucide-react";
 import styles from "./dashboard.module.css";
+import { ChatList } from "@/components/ChatList";
+import { ChatView } from "@/components/ChatView";
+import { Pipeline } from "@/components/Pipeline";
+import { type Chat, type ClientRow, type Controls, type Msg, ms, stageOf, readStore, writeStore } from "@/lib/ui";
 
-function ThemeToggle({ className }: { className: string }) {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-  useEffect(() => { setTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light"); }, []);
+const POLL_VISIBLE = 1500;
+const POLL_HIDDEN = 8000;
+
+function ThemeToggle() {
+  const [dark, setDark] = useState(false);
+  useEffect(() => { setDark(document.documentElement.getAttribute("data-theme") === "dark"); }, []);
   const toggle = () => {
-    const next = theme === "dark" ? "light" : "dark";
-    setTheme(next);
+    const next = dark ? "light" : "dark";
+    setDark(!dark);
     document.documentElement.setAttribute("data-theme", next);
     try { localStorage.setItem("aarohi-theme", next); } catch {}
   };
-  const dark = theme === "dark";
-  return <button className={className} onClick={toggle} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"} title={dark ? "Light mode" : "Dark mode"}>{dark ? <Sun size={17}/> : <Moon size={17}/>}<span>{dark ? "Light" : "Dark"}</span></button>;
+  return <button className={styles.iconButton} onClick={toggle} aria-label={dark ? "Light mode" : "Dark mode"} title={dark ? "Light mode" : "Dark mode"}>{dark ? <Sun size={18} /> : <Moon size={18} />}</button>;
 }
-
-type Task = "Angel One" | "Choice FinX" | "Bajaj";
-type Message = { direction: "user" | "bot" | "admin"; text: string; time: string; kind?: "image" | "text"; fileId?: string };
-type Client = { id: string; name: string; username: string; phone: string; task: Task; status: string; last: string; updatedAtRaw?: string; task_1_completed_at?: string; task_2_completed_at?: string; task_3_completed_at?: string; paused: boolean; progress: number; completedTaskIds?: string[]; currentTaskId?: string; proofStatus?: string; stateWarning?: boolean; messages: Message[] };
-const sampleClients: Client[] = [
- {id:"764203918",name:"Rahul Das",username:"@rahul_das",phone:"•••••••248",task:"Choice FinX",status:"Proof received",last:"1 min ago",paused:false,progress:1,messages:[{direction:"user",text:"Account activation in progress ka screenshot bheja.",time:"10:41",kind:"image"},{direction:"bot",text:"Screenshot mil gaya, ab main status check kar rahi hoon.",time:"10:41"},{direction:"bot",text:"Choice FinX ka onboarding status detect hua. Agla task process ho raha hai.",time:"10:42"}]},
- {id:"738194205",name:"Priya Ghosh",username:"@priya_ghosh",phone:"•••••••901",task:"Angel One",status:"Waiting for profile proof",last:"4 min ago",paused:false,progress:0,messages:[{direction:"bot",text:"Neeche More par tap kijiye, phir Profile kholkar Client ID wala screenshot bhejiye.",time:"10:32"},{direction:"user",text:"Home page screenshot",time:"10:34",kind:"image"}]},
- {id:"790512468",name:"Aman Khan",username:"@aman_k",phone:"•••••••416",task:"Bajaj",status:"AI paused by admin",last:"12 min ago",paused:true,progress:2,messages:[{direction:"user",text:"Account submitted ka screenshot bheja.",time:"10:18",kind:"image"},{direction:"bot",text:"Bajaj ka status mil gaya. Final approval ka status confirm hone par update milega.",time:"10:18"}]},
- {id:"715638204",name:"Sneha Paul",username:"@sneha_p",phone:"•••••••332",task:"Angel One",status:"Task 1 complete",last:"28 min ago",paused:false,progress:1,messages:[{direction:"user",text:"Profile screenshot with Client ID",time:"09:53",kind:"image"},{direction:"bot",text:"Screenshot check ho gaya. Ab Choice FinX Task 2 share kar rahi hoon.",time:"09:54"}]}
-];
-const taskSteps: Task[] = ["Angel One","Choice FinX","Bajaj"];
-const taskIds = ["task_1_angel_one","task_2_choice_finx","task_3"];
 
 export default function DashboardPage() {
- const [clients,setClients] = useState(sampleClients);
- const [selectedId,setSelectedId] = useState(sampleClients[0].id);
- const [search,setSearch] = useState("");
- const [filters,setFilters] = useState<string[]>([]);
- const [unreadIds,setUnreadIds] = useState<string[]>([]);
- const [selectedTaskTab,setSelectedTaskTab] = useState(0);
- const [selectedCompletedTaskTab,setSelectedCompletedTaskTab] = useState(0);
- const [completionDate,setCompletionDate] = useState("");
- const [message,setMessage] = useState("");
- const messagesEndRef = useRef<HTMLDivElement|null>(null);
- const messagesContainerRef = useRef<HTMLDivElement|null>(null);
- const stickToBottomRef = useRef(true);
- const [showJump,setShowJump] = useState(false);
- const [notice,setNotice] = useState("Checking admin session and n8n connection…");
- const [mobileNav,setMobileNav] = useState(false);
- const [mobileChatOpen,setMobileChatOpen] = useState(false);
- const [connected,setConnected] = useState(false);
- const [busy,setBusy] = useState(false);
- const [loading,setLoading] = useState(false);
- const [authReady,setAuthReady] = useState(false);
- const selected = clients.find(c=>c.id===selectedId) || clients[0];
+  const [authReady, setAuthReady] = useState(false);
+  const [connected, setConnected] = useState<boolean | null>(null);
+  const [error, setError] = useState("");
+  const [clients, setClients] = useState<Record<string, ClientRow>>({});
+  const [messages, setMessages] = useState<Record<string, Msg[]>>({});
+  const [controls, setControls] = useState<Controls>({ global: { paused: false, at: "" }, users: {} });
+  const [selectedId, setSelectedId] = useState("");
+  const [mobileChatOpen, setMobileChatOpen] = useState(false);
+  const [view, setView] = useState<"chats" | "pipeline">("chats");
+  const [readMap, setReadMap] = useState<Record<string, number>>({});
+  const [globalBusy, setGlobalBusy] = useState(false);
+  const [toast, setToast] = useState("");
+  const cursorRef = useRef<{ sinceId: number; clientsSince: string }>({ sinceId: 0, clientsSince: "" });
+  const historyLoaded = useRef<Set<string>>(new Set());
+  const pollTimer = useRef<number | undefined>(undefined);
+  const inFlight = useRef(false);
 
- const refresh = useCallback(async (silent=false) => {
-  if(!silent) setLoading(true);
-  try {
-   const auth=await fetch("/api/auth",{cache:"no-store"}).then(r=>r.json());
-   if(!auth.authenticated){location.replace("/login");return;}
-   setAuthReady(true);
-   const response=await fetch("/api/dashboard",{cache:"no-store"});
-   const data=await response.json();
-   if(!response.ok) throw new Error(data.error||"Unable to load dashboard");
-   if(!data.connected){setConnected(false);setNotice("n8n connection is not configured yet. Sample data is shown; no real conversations are being displayed.");return;}
-   setConnected(true);
-   setNotice(data.messagesConfigured?"Connected to n8n. Message log is available.":"Connected to progress/submission tables. Full conversation history still needs message logging in n8n.");
-   const rows=Array.isArray(data.clients)?data.clients:[];
-   const messageRows=Array.isArray(data.messages)?data.messages:[];
-   const asMillis=(value:any)=>{if(value===null||value===undefined||value==="")return 0;const n=Number(value);if(Number.isFinite(n)&&n>0)return n<1e12?n*1000:n;const d=Date.parse(String(value));return Number.isFinite(d)?d:0;};
-   const latestIncomingByClient = new Map<string, number>();
-   for (const m of messageRows) { if (String(m.direction)==="inbound" && m.chat_id!=null) { const id=String(m.chat_id); const stamp=asMillis(m.event_time)||asMillis(m.createdAt)||0; latestIncomingByClient.set(id, Math.max(latestIncomingByClient.get(id)||0, stamp)); } }
-   const storedRead: Record<string, number> = {}; try { Object.assign(storedRead, JSON.parse(localStorage.getItem("aarohi_last_read_v1")||"{}")); } catch {}
-   setUnreadIds([...latestIncomingByClient.entries()].filter(([id,stamp])=>stamp>(Number(storedRead[id])||0)&&id!==selectedId).map(([id])=>id));
+  const showToast = useCallback((text: string) => { setToast(text); window.setTimeout(() => setToast(t => (t === text ? "" : t)), 3500); }, []);
 
-   // Merge progress records with any Telegram IDs present in the durable conversation log.
-   // A new conversation remains selectable even if client_progress hasn't been saved yet.
-   const progressRows = new Map<string, any>();
-   for (const row of rows) {
-    const id = String(row.client_id || "");
-    if (/^\d+$/.test(id)) progressRows.set(id, row);
-   }
-   for (const m of messageRows) {
-    const id = String(m?.chat_id ?? m?.user_id ?? "").trim();
-    if (!/^\d+$/.test(id) || progressRows.has(id)) continue;
-    progressRows.set(id, {
-     client_id:id,
-     first_name:String(m.first_name || "Telegram user"),
-     flow_step:"conversation_started",
-     current_task:"",
-     proof_status:"not_submitted",
-     completed_tasks:"[]",
-     phone_number:"",
-     ai_paused:false,
-     updatedAt:m.event_time || m.createdAt || new Date().toISOString()
+  const mergeMessages = useCallback((incoming: Msg[]) => {
+    if (!incoming.length) return;
+    setMessages(prev => {
+      const next = { ...prev };
+      const touched = new Set<string>();
+      for (const m of incoming) {
+        const list = touched.has(m.chatId) ? next[m.chatId] : [...(next[m.chatId] || [])];
+        touched.add(m.chatId);
+        if (list.some(x => x.id === m.id && x.id > 0)) { next[m.chatId] = list; continue; }
+        // A logged admin message replaces its optimistic copy.
+        if (m.direction === "admin") {
+          const i = list.findIndex(x => x.tempKey && x.text.trim() === m.text.trim());
+          if (i >= 0) list.splice(i, 1);
+        }
+        list.push(m);
+        next[m.chatId] = list;
+      }
+      for (const id of touched) next[id] = next[id].sort((a, b) => (a.id > 0 && b.id > 0 ? a.id - b.id : (ms(a.time) - ms(b.time)) || (a.id - b.id)));
+      return next;
     });
-   }
-   const mapped:Client[]=Array.from(progressRows.values()).map((r:any)=>{
-    let completed:any[]=[];try{const parsed=JSON.parse(r.completed_tasks||"[]");if(Array.isArray(parsed))completed=parsed.map(String);}catch{}
-    const completedTaskIds=taskIds.filter(id=>completed.includes(id));
-    const currentTaskId=String(r.current_task||"");
-    const currentIndex=taskIds.indexOf(currentTaskId);
-    const task:Task=currentTaskId.includes("choice")?"Choice FinX":currentTaskId.includes("task_3")||currentTaskId==="completed"?"Bajaj":"Angel One";
-    const clientId=String(r.client_id);
-    const clientMessages:Message[]=messageRows
-      .filter((m:any)=>String(m.chat_id ?? m.user_id ?? "").trim()===clientId)
-      .map((m:any,index:number)=>({m,index,stamp:asMillis(m.event_time)||asMillis(m.createdAt)||index}))
-      .sort((a:any,b:any)=>a.stamp-b.stamp||a.index-b.index)
-      .map(({m,stamp}:any)=>({direction:String(m.direction)==="inbound"?"user":String(m.send_status||"")==="manual_admin"?"admin":String(m.direction)==="outbound"?"bot":"admin",text:String(m.text||m.caption||((m.message_type==="photo"||m.message_type==="document")?"Attachment received":"")),time:new Date(stamp||Date.now()).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"}),kind:(m.message_type==="photo"||m.message_type==="document"||m.file_id)?"image":"text",fileId:m.file_id?String(m.file_id):undefined}))
-      .filter((m:Message)=>Boolean(m.text)||m.kind==="image");
-    const proofStatus=String(r.proof_status||"not_submitted");
-    const expectedIndex=completedTaskIds.length;
-    const stateWarning=currentIndex>=0 && currentIndex!==expectedIndex && currentTaskId!=="completed";
-    return {id:clientId,name:String(r.first_name||"Telegram user"),username:"",phone:r.phone_number?String(r.phone_number):"",task,status:stateWarning?"Task state mismatch — needs review":String(r.flow_step||proofStatus||"Active"),last:r.updatedAt?new Date(r.updatedAt).toLocaleString():"Recently active",updatedAtRaw:r.updatedAt?String(r.updatedAt):undefined,task_1_completed_at:r.task_1_completed_at?String(r.task_1_completed_at):undefined,task_2_completed_at:r.task_2_completed_at?String(r.task_2_completed_at):undefined,task_3_completed_at:r.task_3_completed_at?String(r.task_3_completed_at):undefined,paused:Boolean(r.ai_paused),progress:completedTaskIds.length,completedTaskIds,currentTaskId,proofStatus,stateWarning,messages:clientMessages};
-   });
-   if(mapped.length){setClients(prev=>mapped.map(c=>{const previous=prev.find(p=>p.id===c.id);let savedReplies:Message[]=[];try{const store=JSON.parse(localStorage.getItem("aarohi_manual_replies_v1")||"{}");savedReplies=Array.isArray(store[c.id])?store[c.id]:[];}catch{}const localReplies=[...(previous?.messages||[]),...savedReplies].filter((m,index,all)=>m.direction==="admin"&&!c.messages.some(serverMessage=>serverMessage.direction==="admin"&&serverMessage.text===m.text)&&all.findIndex(x=>x.text===m.text&&x.time===m.time)===index);return {...c,messages:[...c.messages,...localReplies]};}));if(!mapped.some(c=>c.id===selectedId))setSelectedId(mapped[0].id);}
-   else setClients([]);
-  } catch(e){setConnected(false);setNotice(e instanceof Error?e.message:"Unable to load data.");}
-  finally{setLoading(false);}
- },[selectedId]);
- useEffect(()=>{refresh(false);const timer=setInterval(()=>refresh(true),1000);return()=>clearInterval(timer);},[refresh]);
+  }, []);
 
- async function togglePause(c:Client){
-  const action=c.paused?"resume":"pause";setBusy(true);
-  try{const r=await fetch("/api/ai-control",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({clientId:c.id,action})});const d=await r.json();if(!r.ok)throw new Error(d.error||"AI control could not be updated");setClients(prev=>prev.map(x=>x.id===c.id?{...x,paused:action==="pause",status:action==="pause"?"AI paused by admin":x.status}:x));setNotice(action==="pause"?"AI paused for this client.":"AI resumed for this client.");}
-  catch(e){setNotice(e instanceof Error?e.message:"AI control is not connected.");}
-  finally{setBusy(false);}
- }
- async function sendReply(){
-  if(!message.trim())return;setBusy(true);
-  try{const r=await fetch("/api/manual-reply",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chatId:selected.id,text:message.trim()})});const d=await r.json();if(!r.ok)throw new Error(d.error||"Message was not sent");const adminMessage:Message={direction:"admin",text:message.trim(),time:new Date().toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})};setClients(prev=>prev.map(x=>x.id===selected.id?{...x,messages:[...x.messages,adminMessage]}:x));setMessage("");setNotice(d.logged?"Manual reply sent and saved to cloud conversation history.": "Telegram reply sent, but cloud history save failed. Check n8n API settings.");}
-  catch(e){setNotice(e instanceof Error?e.message:"Manual reply could not be sent.");}
-  finally{setBusy(false);}
- }
- async function logout(){await fetch("/api/auth",{method:"DELETE"});location.replace("/login");}
- const filtered=useMemo(()=>clients.filter(c=>(c.name.toLowerCase().includes(search.toLowerCase())||c.id.includes(search)||c.username.toLowerCase().includes(search.toLowerCase()))&&filters.every(f=>f==="Unread"?unreadIds.includes(c.id):f==="AI paused"?c.paused:f==="Needs attention"?/proof|waiting|error|attention/i.test(c.status):f==="Reached Task 1"?Boolean(c.currentTaskId&&(["task_1_angel_one","task_2_choice_finx","task_3","completed"].includes(c.currentTaskId)||c.completedTaskIds?.includes("task_1_angel_one"))):true)),[clients,search,filters,unreadIds]);
- const active=clients.filter(c=>!c.paused).length;
- const scrollToLatest=useCallback(()=>{const el=messagesContainerRef.current;if(!el)return;el.scrollTop=el.scrollHeight;stickToBottomRef.current=true;setShowJump(false);},[]);
- // Opening a chat (or switching client) always jumps to the newest message, again after late layout (images) settles.
- useEffect(()=>{stickToBottomRef.current=true;const t1=window.setTimeout(scrollToLatest,50);const t2=window.setTimeout(scrollToLatest,400);const t3=window.setTimeout(scrollToLatest,1200);return()=>{window.clearTimeout(t1);window.clearTimeout(t2);window.clearTimeout(t3);};},[selectedId,mobileChatOpen,scrollToLatest]);
- // New message: follow it only if the admin is already at the bottom; otherwise show a "new messages" button.
- useEffect(()=>{if(stickToBottomRef.current){const t=window.setTimeout(scrollToLatest,60);return()=>window.clearTimeout(t);}setShowJump(true);},[selected?.messages.length,scrollToLatest]);
- const onMessagesScroll=()=>{const el=messagesContainerRef.current;if(!el)return;const atBottom=el.scrollHeight-el.scrollTop-el.clientHeight<80;stickToBottomRef.current=atBottom;if(atBottom)setShowJump(false);};
- const onMediaLoad=()=>{if(stickToBottomRef.current)scrollToLatest();};
- useEffect(()=>{if(!selectedId)return;const latest=clients.find(c=>c.id===selectedId)?.messages.filter(m=>m.direction==="user").at(-1);if(latest){const store:Record<string,number>={};try{Object.assign(store,JSON.parse(localStorage.getItem("aarohi_last_read_v1")||"{}"));}catch{}store[selectedId]=Date.now();localStorage.setItem("aarohi_last_read_v1",JSON.stringify(store));setUnreadIds(prev=>prev.filter(id=>id!==selectedId));}},[selectedId,clients]);
- const proofCount=clients.filter(c=>/proof|complete/i.test(c.status)).length;
- const attention=clients.filter(c=>/proof|waiting|error|attention/i.test(c.status)).length;
- if(!authReady)return <main className={styles.loading}><Bot size={24}/><p>Checking admin session…</p></main>;
- return <main className={styles.shell}>
-  <aside className={`${styles.sidebar} ${mobileNav?styles.sidebarOpen:""}`}>
-   <div className={styles.brand}><div className={styles.brandMark}><Bot size={22}/></div><div><strong>Aarohi</strong><small>Control Center</small></div><button className={styles.iconButton+" "+styles.closeNav} onClick={()=>setMobileNav(false)} aria-label="Close menu"><X size={18}/></button></div>
-   <div className={styles.workspace}><span className={styles.onlineDot}></span><div><b>Client Progress Manager</b><small>Telegram automation</small></div><ChevronRight size={16}/></div>
-   <div className={styles.navLabel}>WORKSPACE</div><button className={`${styles.navItem} ${styles.navActive}`}><MessageCircle size={18}/> Live conversations <span className={styles.navCount}>{active}</span></button>
-   <button className={styles.navItem}><Users size={18}/> Client progress</button><button className={styles.navItem}><Activity size={18}/> AI activity</button><button className={styles.navItem}><AlertTriangle size={18}/> Errors & alerts <span className={styles.alertCount}>{attention}</span></button>
-   <div className={styles.navLabel}>TASK PIPELINE</div>{taskSteps.map((t,i)=><div key={t} className={styles.pipeline}><span className={styles.pipelineNumber}>{i+1}</span><span>{t}</span><span className={styles.pipelineLine}></span></div>)}
-   <div className={styles.sidebarFoot}><ShieldCheck size={16}/><span>Admin workspace<br/><small>Secure access required</small></span></div>
-  </aside>
-  {mobileNav&&<button className={styles.backdrop} onClick={()=>setMobileNav(false)} aria-label="Close navigation"/>}
-  <section className={styles.mainArea}>
-   <header className={styles.topbar}><button className={styles.iconButton+" "+styles.menuButton} onClick={()=>setMobileNav(true)} aria-label="Open menu"><Menu size={19}/></button><div className={styles.crumb}>Workspace <ChevronRight size={14}/> <b>Live conversations</b></div><div className={styles.topRight}><span className={styles.previewPill}><span></span>{connected?"n8n connected":"Preview / partial"}</span><ThemeToggle className={styles.iconButton+" "+styles.themeToggle}/><button className={styles.iconButton} onClick={()=>refresh(false)} aria-label="Refresh" disabled={loading}><RefreshCw size={17}/></button><button className={styles.iconButton} onClick={logout} aria-label="Log out"><LogOut size={17}/></button><div className={styles.avatar}>AD</div></div></header>
-   <div className={styles.content}>
-    <div className={styles.pageHead}><div><div className={styles.eyebrow}>OVERVIEW / OPERATIONS</div><h1>Live conversations</h1><p>Monitor chats, task progress and AI activity from one place.</p></div><button className={styles.secondaryButton} onClick={()=>refresh(false)}><RefreshCw size={15}/>{loading?"Syncing…":"Sync status"}</button></div>
-    <div className={styles.notice}><Activity size={17}/><span>{notice}</span></div>
-    <div className={styles.metrics}><Metric icon={<Users/>} label="Total clients" value={String(clients.length)} foot={connected?"From n8n":"Sample records"}/><Metric icon={<MessageCircle/>} label="Active conversations" value={String(active)} foot={connected?"Current control state":"Sample records"}/><Metric icon={<CheckCheck/>} label="Proofs / completions" value={String(proofCount)} foot={connected?"From workflow status":"Sample records"}/><Metric icon={<AlertTriangle/>} label="Needs attention" value={String(attention)} foot={connected?"From workflow status":"Sample records"}/></div>
-    <div className={styles.workspaceGrid}>
-     <section className={`${styles.panel} ${mobileChatOpen?styles.mobileListHidden:""}`}><div className={styles.panelHead}><div><h2>Conversations</h2><p>Select a client to inspect the chat</p></div><span className={styles.liveTag}><span></span>{connected?"Connected":"Preview"}</span></div>
-      <div className={styles.filters}><div className={styles.search}><Search size={16}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name, username, Telegram ID"/></div></div>
-      <div className={styles.filterChips}>{["Unread","AI paused","Needs attention","Reached Task 1"].map(f=><label key={f} className={filters.includes(f)?styles.filterChipActive:styles.filterChip}><input type="checkbox" checked={filters.includes(f)} onChange={()=>setFilters(prev=>prev.includes(f)?prev.filter(x=>x!==f):[...prev,f])}/>{f}</label>)}{filters.length>0&&<button className={styles.clearFilters} onClick={()=>setFilters([])}>Clear</button>}</div>
-      <div className={styles.clientList}>{filtered.map(c=><button key={c.id} onClick={()=>{setSelectedId(c.id);setMessage("");setMobileChatOpen(true);}} className={`${styles.clientRow} ${selectedId===c.id?styles.clientSelected:""}`}><div className={styles.clientAvatar}>{c.name.split(" ").map(s=>s[0]).join("").slice(0,2)}</div><div className={styles.clientMeta}><strong>{c.name}</strong><small>{c.username||("Telegram ID "+c.id)} · {c.last}</small><span>{c.status}</span>{unreadIds.includes(c.id)&&<small className={styles.unreadBadge}>Unread</small>}</div><div className={styles.rowStatus}><i className={c.paused?styles.pausedDot:styles.activeDot}></i></div></button>)}{filtered.length===0&&<div className={styles.noClients}>No clients found for this filter.</div>}</div>
-     </section>
-     {selected&&<section className={styles.panel+" "+styles.chatPanel+(mobileChatOpen?" "+styles.mobileChatVisible:" "+styles.mobileChatHidden)}>
-      <div className={styles.chatHead}><button className={styles.mobileBackButton} onClick={()=>setMobileChatOpen(false)} aria-label="Back to conversations">‹ Chats</button><div className={styles.clientAvatar+" "+styles.bigAvatar}>{selected.name.split(" ").map(s=>s[0]).join("").slice(0,2)}</div><div className={styles.chatTitle}><h2>{selected.name}</h2><p>Telegram ID {selected.id}</p><div className={styles.chips}><span className={styles.taskChip}>{selected.task}</span><span className={selected.paused?styles.pausedChip:styles.activeChip}>{selected.paused?"AI paused":"AI active"}</span></div></div><button disabled={busy||!connected} onClick={()=>togglePause(selected)} className={selected.paused?styles.resumeButton:styles.pauseButton}>{selected.paused?<CirclePlay size={16}/>:<CirclePause size={16}/>} {selected.paused?"Resume AI":"Pause AI"}</button></div>
-      <div className={styles.chatDetails}><span><WalletCards size={14}/>{selected.phone||"Phone not captured"}</span><span><Clock3 size={14}/>Last active {selected.last}</span></div>
-      <div className={styles.messages} ref={messagesContainerRef} onScroll={onMessagesScroll}>{selected.messages.length?selected.messages.map((m,i)=><div key={i} className={`${styles.messageRow} ${m.direction==="user"?styles.incoming:styles.outgoing}`}><div className={styles.messageBubble}><small>{m.direction==="user"?"USER":m.direction==="admin"?"YOU · ADMIN":"AAROHI AI"} · {m.time}</small>{m.kind==="image"&&(m.fileId?<img className={styles.telegramImage} src={`/api/telegram-file?file_id=${encodeURIComponent(m.fileId)}`} alt="Telegram screenshot attachment" loading="lazy" onLoad={onMediaLoad}/>:<div className={styles.imagePlaceholder}><ImageIcon size={28}/><span>Attachment image unavailable (no Telegram file ID)</span></div>)}<p>{m.text}</p></div></div>):<div className={styles.emptyChat}><MessageCircle size={24}/><b>No messages recorded yet</b><span>This client is listed, but no messages for this Telegram ID are in the log yet. Refresh after the next message.</span></div>}<div ref={messagesEndRef}/>{showJump&&<button type="button" className={styles.jumpLatest} onClick={scrollToLatest}>↓ New messages</button>}</div>
-      <div className={styles.composer}><textarea value={message} onChange={e=>setMessage(e.target.value)} placeholder="Write a manual reply…" rows={2}/><button onClick={sendReply} disabled={!message.trim()||busy||!connected}><Send size={17}/>Send reply</button></div>
-     </section>}
-    </div>
-    <section className={styles.progressPanel}><div className={styles.panelHead}><div><h2>Task progress</h2><p>Live status from the selected client’s n8n record</p></div>{selected&&<span className={styles.taskChip}>Client #{selected.id.slice(-4)}</span>}</div>{selected?.stateWarning&&<div className={styles.pipelineWarning}><AlertTriangle size={16}/><span>Database mismatch: current task is {selected.currentTaskId}, but completed tasks list says {selected.completedTaskIds?.length ?? 0} completed. Later tasks remain locked until state is corrected.</span></div>}<div className={styles.progressGrid}>{taskSteps.map((t,i)=>{const taskId=taskIds[i];const completed=selected?.completedTaskIds||[];const done=!!selected&&completed.includes(taskId);const priorDone=i===0||!!selected&&taskIds.slice(0,i).every(id=>completed.includes(id));const current=!!selected&&!done&&priorDone&&!selected.stateWarning;const pending=!!selected&&!done&&priorDone&&/pending|submitted|review/i.test(selected.proofStatus||"");const label=done?"Complete":pending?"Proof pending":current?"In progress":"Locked";const detail=done?"Recorded in completed_tasks":pending?"Waiting for proof review":current?"Current task — awaiting submission":"Complete the previous task first";return <div key={t} className={styles.progressCard}><div className={styles.progressTop}><span className={done?styles.doneIcon:current||pending?styles.currentIcon:styles.todoIcon}>{done?<CheckCheck size={18}/>:current||pending?<Clock3 size={18}/>:<span>{i+1}</span>}</span><span className={done?styles.doneLabel:current||pending?styles.currentLabel:styles.todoLabel}>{label}</span></div><h3>{t}</h3><p>{detail}</p></div>})}</div></section>
-    <section className={styles.progressPanel}><div className={styles.panelHead}><div><h2>Active task tabs</h2><p>Har tab mein wahi clients dikhenge jinka current_task us task par hai. Task complete hote hi client agle active task ke tab mein aayega.</p></div></div><div className={styles.taskTabs}>{taskSteps.map((task,i)=>{const taskId=taskIds[i];const activeClients=clients.filter(c=>c.currentTaskId===taskId&&!c.completedTaskIds?.includes(taskId));return <button key={taskId} className={selectedTaskTab===i?styles.taskTabActive:styles.taskTab} onClick={()=>setSelectedTaskTab(i)}>{`Task ${i+1}: ${task}`}<span>{activeClients.length}</span></button>})}</div><div className={styles.taskTabResults}>{clients.filter(c=>c.currentTaskId===taskIds[selectedTaskTab]&&!c.completedTaskIds?.includes(taskIds[selectedTaskTab])).length===0?<div className={styles.emptyChat}><Users size={22}/><b>No active clients in this task</b><span>Client ka current_task n8n mein is task ID par set hote hi yahan dikhega.</span></div>:clients.filter(c=>c.currentTaskId===taskIds[selectedTaskTab]&&!c.completedTaskIds?.includes(taskIds[selectedTaskTab])).map(c=><div className={styles.taskCompletedRow} key={c.id}><div className={styles.clientAvatar}>{c.name.split(" ").map(s=>s[0]).join("").slice(0,2)}</div><div className={styles.clientMeta}><strong>{c.name}</strong><small>Telegram ID {c.id} · {c.phone||"Phone not captured"}</small><span>Active task: {taskSteps[selectedTaskTab]} · {c.proofStatus||"Status unknown"}</span></div><button className={styles.secondaryButton} onClick={()=>setSelectedId(c.id)}>Open chat</button></div>)}</div></section>
-     <section className={styles.progressPanel}><div className={styles.panelHead}><div><h2>Completed task history</h2><p>Completed clients by task. Date filters by last n8n record update.</p></div><label className={styles.dateFilter}>Date <input type="date" value={completionDate} onChange={e=>setCompletionDate(e.target.value)}/></label></div><div className={styles.taskTabs}>{taskSteps.map((task,i)=>{const id=taskIds[i];const list=clients.filter(c=>c.completedTaskIds?.includes(id)&&(!completionDate||([c.task_1_completed_at,c.task_2_completed_at,c.task_3_completed_at][i]&&new Date([c.task_1_completed_at,c.task_2_completed_at,c.task_3_completed_at][i]!).toISOString().slice(0,10)===completionDate)));return <button key={id} className={selectedCompletedTaskTab===i?styles.taskTabActive:styles.taskTab} onClick={()=>setSelectedCompletedTaskTab(i)}>Task {i+1} completed: {task}<span>{list.length}</span></button>;})}</div><div className={styles.taskTabResults}>{clients.filter(c=>c.completedTaskIds?.includes(taskIds[selectedCompletedTaskTab])&&(!completionDate||([c.task_1_completed_at,c.task_2_completed_at,c.task_3_completed_at][selectedCompletedTaskTab]&&new Date([c.task_1_completed_at,c.task_2_completed_at,c.task_3_completed_at][selectedCompletedTaskTab]!).toISOString().slice(0,10)===completionDate))).map(c=><div className={styles.taskCompletedRow} key={c.id}><div className={styles.clientAvatar}>{c.name.slice(0,1)}</div><div className={styles.clientMeta}><strong>{c.name}</strong><small>Telegram ID {c.id} · {c.phone||"Phone not captured"}</small><span>Completed: {taskSteps[selectedCompletedTaskTab]} · Completed { [c.task_1_completed_at,c.task_2_completed_at,c.task_3_completed_at][selectedCompletedTaskTab] ? new Date([c.task_1_completed_at,c.task_2_completed_at,c.task_3_completed_at][selectedCompletedTaskTab]!).toLocaleString() : "date unavailable for older records" }</span></div><button className={styles.secondaryButton} onClick={()=>setSelectedId(c.id)}>Open chat</button></div>)}{clients.every(c=>!c.completedTaskIds?.includes(taskIds[selectedCompletedTaskTab])||Boolean(completionDate&&(![c.task_1_completed_at,c.task_2_completed_at,c.task_3_completed_at][selectedCompletedTaskTab]||new Date([c.task_1_completed_at,c.task_2_completed_at,c.task_3_completed_at][selectedCompletedTaskTab]!).toISOString().slice(0,10)!==completionDate)))&&<div className={styles.emptyChat}><Users size={22}/><b>No completed clients found</b><span>Selected task/date ke liye record nahi mila.</span></div>}</div></section>
-    <footer className={styles.footer}>Aarohi Control Center <span>·</span> Live sync · checks every 1 second <span>·</span> {connected?"n8n progress connected":"Demo records only"}</footer>
-   </div>
-  </section>
- </main>;
+  const poll = useCallback(async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    try {
+      const { sinceId, clientsSince } = cursorRef.current;
+      const qs = sinceId ? `?sinceId=${sinceId}&clientsSince=${encodeURIComponent(clientsSince)}` : "";
+      const res = await fetch(`/api/dashboard${qs}`, { cache: "no-store" });
+      if (res.status === 401) { location.replace("/login"); return; }
+      const data = await res.json();
+      if (!data.connected) { setConnected(false); setError(data.error || (data.reason === "n8n_not_configured" ? "n8n is not configured in Vercel (N8N_BASE_URL / N8N_API_KEY)." : "Could not reach n8n.")); return; }
+      setConnected(true);
+      setError("");
+      cursorRef.current = { sinceId: data.cursor?.sinceId || sinceId, clientsSince: data.cursor?.clientsSince || clientsSince };
+      setControls(data.controls);
+      setClients(prev => {
+        const next = data.clientsFull ? {} as Record<string, ClientRow> : { ...prev };
+        for (const c of data.clients as ClientRow[]) next[c.id] = c;
+        return next;
+      });
+      mergeMessages(data.messages as Msg[]);
+    } catch (e) {
+      setConnected(false);
+      setError(e instanceof Error ? e.message : "Network error");
+    } finally {
+      inFlight.current = false;
+    }
+  }, [mergeMessages]);
+
+  // Polling loop: fast while the tab is visible, slow in the background, instant on focus.
+  // schedule() always clears the previous timer, so only one poll chain can exist.
+  useEffect(() => {
+    let stopped = false;
+    const schedule = (delay: number) => { window.clearTimeout(pollTimer.current); if (!stopped) pollTimer.current = window.setTimeout(tick, delay); };
+    const tick = async () => { await poll(); schedule(document.hidden ? POLL_HIDDEN : POLL_VISIBLE); };
+    (async () => {
+      const auth = await fetch("/api/auth", { cache: "no-store" }).then(r => r.json()).catch(() => ({}));
+      if (!auth.authenticated) { location.replace("/login"); return; }
+      setAuthReady(true);
+      setReadMap(readStore());
+      schedule(0);
+    })();
+    const onVisible = () => { if (!document.hidden) schedule(0); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { stopped = true; window.clearTimeout(pollTimer.current); document.removeEventListener("visibilitychange", onVisible); };
+  }, [poll]);
+
+  // Load the full history of a chat the first time it is opened.
+  useEffect(() => {
+    if (!selectedId || historyLoaded.current.has(selectedId)) return;
+    historyLoaded.current.add(selectedId);
+    fetch(`/api/messages?chatId=${selectedId}`, { cache: "no-store" })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (d?.messages) mergeMessages(d.messages); })
+      .catch(() => historyLoaded.current.delete(selectedId));
+  }, [selectedId, mergeMessages]);
+
+  const chats: Chat[] = useMemo(() => {
+    const ids = new Set<string>([...Object.keys(clients), ...Object.keys(messages)]);
+    const out: Chat[] = [];
+    for (const id of ids) {
+      if (!/^\d+$/.test(id)) continue;
+      const list = messages[id] || [];
+      const client = clients[id];
+      const last = list[list.length - 1];
+      const lastIn = [...list].reverse().find(m => m.direction === "in");
+      const read = readMap[id] || 0;
+      const unread = id === selectedId && view === "chats" ? 0 : list.filter(m => m.direction === "in" && m.id > read).length;
+      const ctl = controls.users[id];
+      out.push({
+        id,
+        name: client?.name && client.name !== "Telegram user" ? client.name : lastIn?.name || client?.name || "Telegram user",
+        phone: client?.phone || "",
+        client,
+        paused: Boolean(ctl?.paused),
+        noKyc: Boolean(ctl?.noKyc),
+        last,
+        lastTime: last ? ms(last.time) : ms(client?.updatedAt || ""),
+        unread,
+        stage: stageOf(client),
+      });
+    }
+    return out.sort((a, b) => b.lastTime - a.lastTime);
+  }, [clients, messages, controls, readMap, selectedId, view]);
+
+  const selected = chats.find(c => c.id === selectedId);
+  const selectedMessages = selectedId ? messages[selectedId] || [] : [];
+
+  // Mark the open chat as read up to its newest inbound message.
+  useEffect(() => {
+    if (!selectedId || view !== "chats") return;
+    const maxIn = selectedMessages.reduce((acc, m) => (m.direction === "in" && m.id > acc ? m.id : acc), 0);
+    if (maxIn && maxIn > (readMap[selectedId] || 0)) {
+      const next = { ...readStore(), [selectedId]: maxIn };
+      writeStore(next);
+      setReadMap(next);
+    }
+  }, [selectedId, selectedMessages, readMap, view]);
+
+  const totalUnread = chats.reduce((a, c) => a + c.unread, 0);
+  useEffect(() => { document.title = totalUnread ? `(${totalUnread}) Aarohi Control Center` : "Aarohi Control Center"; }, [totalUnread]);
+
+  async function toggleGlobal() {
+    const turningOff = !controls.global.paused;
+    if (turningOff && !confirm("AI sabke liye band karein?\n\nTask 1 link tak ka onboarding chalta rahega. Uske baad bot kisi ko automatic reply nahi karega, screenshot bhi check nahi karega — aapko khud reply aur task complete karna hoga.")) return;
+    setGlobalBusy(true);
+    try {
+      const r = await fetch("/api/ai-control", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clientId: "global", action: turningOff ? "pause" : "resume" }) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || d.error || "Could not change global AI");
+      setControls(c => ({ ...c, global: { paused: turningOff, at: new Date().toISOString() } }));
+      showToast(turningOff ? "Human mode ON — AI sabke liye band" : "AI wapas ON — automation chalu");
+    } catch (e) { showToast(e instanceof Error ? e.message : "Failed"); }
+    finally { setGlobalBusy(false); }
+  }
+
+  async function toggleUser(chat: Chat) {
+    const action = chat.paused ? "resume" : "pause";
+    const r = await fetch("/api/ai-control", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clientId: chat.id, action }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { showToast(d.detail || d.error || "AI control failed"); return; }
+    setControls(c => ({ ...c, users: { ...c.users, [chat.id]: { paused: action === "pause", noKyc: false } } }));
+    showToast(action === "pause" ? `AI paused for ${chat.name}` : `AI resumed for ${chat.name}`);
+  }
+
+  async function sendMessage(chatId: string, text: string, retryKey?: string) {
+    const tempKey = retryKey || `t${Date.now()}${Math.random().toString(36).slice(2, 6)}`;
+    const optimistic: Msg = { id: -Date.now(), chatId, name: "Admin", direction: "admin", type: "text", text, fileId: "", time: new Date().toISOString(), status: "manual_admin", local: "sending", tempKey };
+    setMessages(prev => ({ ...prev, [chatId]: [...(prev[chatId] || []).filter(m => m.tempKey !== tempKey), optimistic] }));
+    try {
+      const r = await fetch("/api/manual-reply", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chatId, text }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.detail || d.error || "Message was not sent");
+      // Sent: show as delivered until the logged copy arrives from n8n (then it is replaced).
+      setMessages(prev => ({ ...prev, [chatId]: (prev[chatId] || []).map(m => (m.tempKey === tempKey ? { ...m, local: undefined } : m)) }));
+      if (!d.logged) showToast("Message bhej diya, par history mein save nahi hua (n8n API).");
+      window.setTimeout(poll, 400);
+    } catch (e) {
+      setMessages(prev => ({ ...prev, [chatId]: (prev[chatId] || []).map(m => (m.tempKey === tempKey ? { ...m, local: "failed" } : m)) }));
+      showToast(e instanceof Error ? e.message : "Send failed");
+    }
+  }
+
+  async function completeTask(chat: Chat, taskId: string, sendMessages: boolean) {
+    const r = await fetch("/api/task-action", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clientId: chat.id, taskId, sendMessages }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.detail || d.error || "Task update failed");
+    if (d.failed?.length) showToast(`Task update ho gaya, par message nahi gaya: ${d.failed[0]}`);
+    else showToast(sendMessages ? "Task complete ✓ — agla message bhej diya" : "Task complete ✓");
+    cursorRef.current = { ...cursorRef.current, clientsSince: "" };
+    window.setTimeout(poll, 300);
+  }
+
+  async function logout() { await fetch("/api/auth", { method: "DELETE" }); location.replace("/login"); }
+
+  function openChat(id: string) { setSelectedId(id); setMobileChatOpen(true); setView("chats"); }
+
+  if (!authReady) return <main className={styles.loading}><Bot size={26} /><p>Checking admin session…</p></main>;
+
+  const human = controls.global.paused;
+  return (
+    <main className={styles.shell}>
+      <header className={styles.topbar}>
+        <div className={styles.brand}><div className={styles.brandMark}><Bot size={20} /></div><div><strong>Aarohi</strong><small>Control Center</small></div></div>
+        <nav className={styles.viewTabs}>
+          <button className={view === "chats" ? styles.viewTabActive : styles.viewTab} onClick={() => setView("chats")}><MessageCircle size={16} /><span>Chats</span>{totalUnread > 0 && <b>{totalUnread}</b>}</button>
+          <button className={view === "pipeline" ? styles.viewTabActive : styles.viewTab} onClick={() => setView("pipeline")}><LayoutGrid size={16} /><span>Tasks</span></button>
+        </nav>
+        <div className={styles.topRight}>
+          <button className={human ? styles.globalOff : styles.globalOn} onClick={toggleGlobal} disabled={globalBusy || !connected} title={human ? "Click karke AI wapas ON karo" : "Click karke AI sabke liye band karo (Human mode)"}>
+            <span className={styles.switchTrack}><span className={styles.switchKnob} /></span>
+            {human ? <><Hand size={15} /><span>Human mode</span></> : <><Bot size={15} /><span>AI ON</span></>}
+          </button>
+          <span className={connected ? styles.liveDot : styles.offlineDot} title={connected ? "Live — updates every ~1.5 s" : error}>{connected ? "Live" : <WifiOff size={14} />}</span>
+          <ThemeToggle />
+          <button className={styles.iconButton} onClick={logout} aria-label="Log out" title="Log out"><LogOut size={18} /></button>
+        </div>
+      </header>
+      {human && <div className={styles.humanBanner}><Hand size={16} /><span><b>Human mode ON:</b> Task 1 link tak onboarding chal raha hai. Uske baad bot kisi ko reply nahi karega — chat se aap khud reply karo aur &quot;Task complete&quot; button se agla task bhejo.</span></div>}
+      {connected === false && <div className={styles.errorBanner}><WifiOff size={16} /><span>{error || "n8n se connect nahi ho pa raha."} Retrying…</span></div>}
+
+      {view === "chats" ? (
+        <div className={styles.chatLayout}>
+          <ChatList chats={chats} selectedId={selectedId} onOpen={openChat} hidden={mobileChatOpen} loading={connected === null} />
+          <ChatView
+            chat={selected}
+            messages={selectedMessages}
+            visible={mobileChatOpen}
+            globalHuman={human}
+            onBack={() => setMobileChatOpen(false)}
+            onSend={sendMessage}
+            onToggleAi={toggleUser}
+            onCompleteTask={completeTask}
+            connected={Boolean(connected)}
+          />
+        </div>
+      ) : (
+        <Pipeline chats={chats} onOpen={openChat} />
+      )}
+      {toast && <div className={styles.toast} role="status">{toast}</div>}
+    </main>
+  );
 }
-function Metric({icon,label,value,foot}:{icon:ReactNode;label:string;value:string;foot:string}){return <div className={styles.metric}><div className={styles.metricTop}><span>{label}</span><div className={styles.metricIcon}>{icon}</div></div><strong>{value}</strong><small>{foot}</small></div>;}
