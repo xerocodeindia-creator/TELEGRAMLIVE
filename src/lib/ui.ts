@@ -10,6 +10,8 @@ export type Msg = {
   fileId: string;
   time: string;
   status: string;
+  /** Telegram message_id (per-chat, increases in the real chat order). */
+  tgId?: number;
   local?: "sending" | "failed";
   tempKey?: string;
 };
@@ -72,6 +74,15 @@ export const ms = (iso: string) => { const t = Date.parse(iso); return Number.is
 export function timeOf(iso: string) {
   const t = ms(iso);
   return t ? new Date(t).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: TZ }) : "";
+}
+/** Chat order: by second, then Telegram message id (true order inside the chat), then log row id. */
+type Ordered = { time: string; id: number; tgId?: number };
+export function msgCmp(a: Ordered, b: Ordered) {
+  const ta = Math.floor(ms(a.time) / 1000), tb = Math.floor(ms(b.time) / 1000);
+  if (ta !== tb) return ta - tb;
+  const ga = a.tgId || 0, gb = b.tgId || 0;
+  if (ga && gb && ga !== gb) return ga - gb;
+  return a.id - b.id;
 }
 export function dayKey(t: number) { return new Date(t).toLocaleDateString("en-CA", { timeZone: TZ }); }
 export function dayLabel(t: number) {

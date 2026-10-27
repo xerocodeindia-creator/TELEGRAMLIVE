@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin, jsonError, privateJsonHeaders } from "@/lib/auth";
 import { n8nConfig, readRows, GLOBAL_CONTROL_ID, type Row } from "@/lib/n8n";
 import { toMillis, mapMessage } from "@/lib/mappers";
+import { msgCmp } from "@/lib/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -75,7 +76,7 @@ export async function GET(req: Request) {
       .filter(m => m && (m.chat_id != null || m.user_id != null))
       .map(mapMessage)
       .filter(m => /^\d+$/.test(m.chatId))
-      .sort((a, b) => a.id - b.id);
+      .sort(msgCmp);
     const clients = clientResult.rows.map(mapClient).filter(c => /^\d+$/.test(c.id));
 
     const maxId = messages.reduce((acc, m) => Math.max(acc, m.id), sinceId);

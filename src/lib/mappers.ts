@@ -23,6 +23,7 @@ export function mapMessage(m: Row) {
     fileId: m.file_id ? String(m.file_id) : "",
     time: stamp ? new Date(stamp).toISOString() : "",
     status,
+    tgId: Number(m.telegram_message_id) || 0,
   };
 }
 

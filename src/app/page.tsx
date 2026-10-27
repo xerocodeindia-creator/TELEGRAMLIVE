@@ -6,7 +6,7 @@ import styles from "./dashboard.module.css";
 import { ChatList } from "@/components/ChatList";
 import { ChatView } from "@/components/ChatView";
 import { Pipeline } from "@/components/Pipeline";
-import { type Chat, type ClientRow, type Controls, type Msg, ms, dayKey, stageOf } from "@/lib/ui";
+import { type Chat, type ClientRow, type Controls, type Msg, ms, msgCmp, dayKey, stageOf } from "@/lib/ui";
 
 const POLL_VISIBLE = 1500;
 // Task 1 / Task 2 / Task 3 link messages (bot or admin). The first one marks the user as "qualified".
@@ -61,7 +61,7 @@ export default function DashboardPage() {
         list.push(m);
         next[m.chatId] = list;
       }
-      for (const id of touched) next[id] = next[id].sort((a, b) => (a.id > 0 && b.id > 0 ? a.id - b.id : (ms(a.time) - ms(b.time)) || (a.id - b.id)));
+      for (const id of touched) next[id] = next[id].sort(msgCmp);
       return next;
     });
   }, []);
