@@ -6,10 +6,11 @@ import styles from "@/app/dashboard.module.css";
 import { type Chat, avatarColor, dayKey, initials, listTime, preview } from "@/lib/ui";
 
 // Filters can be combined. Stage filters (Task 1/2/3, Done, New) are OR-ed with each other;
-// Unread, Qualified (Task 1 link sent) and AI paused are extra conditions (AND). Example: Unread + Task 2 = unread chats on Task 2.
+// Unread, Qualified (Task 1 link sent), Trade Qualified (Task 1 completed — stays while on Task 2/3/Done) and AI paused are extra conditions (AND). Example: Unread + Task 2 = unread chats on Task 2.
 const STATUS_FILTERS = [
   { key: "unread", label: "Unread" },
   { key: "qualified", label: "Qualified" },
+  { key: "tradeQualified", label: "Trade Qualified" },
   { key: "paused", label: "AI paused" },
 ] as const;
 const STAGE_FILTERS = [
@@ -52,6 +53,7 @@ export function ChatList({ chats, selectedId, onOpen, hidden, loading }: { chats
     if (keys.includes("unread") && c.unread === 0) return false;
     if (keys.includes("paused") && !c.paused) return false;
     if (keys.includes("qualified") && !c.qualified) return false;
+    if (keys.includes("tradeQualified") && !(c.client?.completed || []).includes("task_1_angel_one")) return false;
     return true;
   };
 
