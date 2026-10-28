@@ -28,6 +28,12 @@ function shiftDay(key: string, delta: number) {
   const t = Date.parse(key + "T12:00:00Z") + delta * 86400000;
   return new Date(t).toISOString().slice(0, 10);
 }
+function shortDay(key: string) {
+  return new Date(key + "T12:00:00Z").toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "UTC" });
+}
+function daysBetween(a: string, b: string) {
+  return Math.round((Date.parse(b + "T12:00:00Z") - Date.parse(a + "T12:00:00Z")) / 86400000);
+}
 function dateTitle(key: string) {
   if (!key) return "All dates";
   if (key === todayKey()) return "Today";
@@ -38,14 +44,40 @@ function dateTitle(key: string) {
 export function ChatList({ chats, selectedId, onOpen, hidden, loading }: { chats: Chat[]; selectedId: string; onOpen: (id: string) => void; hidden: boolean; loading: boolean }) {
   const [query, setQuery] = useState("");
   const [active, setActive] = useState<FilterKey[]>([]);
-  // Default is always today (not remembered between visits); "" = all dates.
-  const [date, setDate] = useState<string>(todayKey);
+  // Date range (IST days, inclusive). Default is always today (not remembered between visits); both "" = all dates.
+  const [from, setFrom] = useState<string>(todayKey);
+  const [to, setTo] = useState<string>(todayKey);
+  const [showRange, setShowRange] = useState(false);
+  const allDates = !from && !to;
+  const setRange = (f: string, t: string) => {
+    const today = todayKey();
+    let a = f || t, b = t || f;
+    if (a > b) [a, b] = [b, a];
+    if (b > today) b = today;
+    if (a > b) a = b;
+    setFrom(a); setTo(b);
+  };
+  const setAll = () => { setFrom(""); setTo(""); };
+  const spanDays = allDates ? 1 : daysBetween(from, to) + 1;
+  const shiftRange = (delta: number) => {
+    const base = allDates ? todayKey() : null;
+    const f = base ?? from, t = base ?? to;
+    setRange(shiftDay(f, delta * spanDays), shiftDay(t, delta * spanDays));
+  };
+  const isToday = from === todayKey() && to === todayKey();
+  const rangeTitle = allDates ? "All dates" : from === to ? dateTitle(from) : `${shortDay(from)} – ${shortDay(to)} (${spanDays} din)`;
+  const preset = (label: string, f: string, t: string) => (
+    <button key={label} className={from === f && to === t ? styles.rangePresetOn : styles.rangePreset} onClick={() => setRange(f, t)}>{label}</button>
+  );
   // On phones the chips are folded behind a "Filters" button so the chat list gets the screen.
   const [showChips, setShowChips] = useState(false);
 
   const toggle = (key: FilterKey) => setActive(prev => (prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]));
 
-  const inDate = useMemo(() => (date ? chats.filter(c => c.days.has(date)) : chats), [chats, date]);
+  const inDate = useMemo(() => {
+    if (allDates) return chats;
+    return chats.filter(c => { for (const d of c.days) if (d >= from && d <= to) return true; return false; });
+  }, [chats, from, to, allDates]);
 
   const matches = (c: Chat, keys: FilterKey[]) => {
     const stages = keys.filter(k => STAGE_FILTERS.some(f => f.key === k));
@@ -89,19 +121,37 @@ export function ChatList({ chats, selectedId, onOpen, hidden, loading }: { chats
         <div className={styles.search}><Search size={16} /><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search name, phone or Telegram ID" /></div>
         <div className={styles.dateBar}>
           <CalendarDays size={15} />
-          <button className={styles.dayStep} onClick={() => setDate(d => shiftDay(d || todayKey(), -1))} aria-label="Previous day"><ChevronLeft size={16} /></button>
-          <label className={styles.datePick}>
-            <span>{dateTitle(date)}</span>
-            <input type="date" value={date} max={todayKey()} onChange={e => setDate(e.target.value)} onClick={e => { try { (e.currentTarget as HTMLInputElement & { showPicker?: () => void }).showPicker?.(); } catch {} }} aria-label="Choose date" />
-          </label>
-          <button className={styles.dayStep} onClick={() => setDate(d => shiftDay(d || todayKey(), 1))} disabled={!date || date >= todayKey()} aria-label="Next day"><ChevronRight size={16} /></button>
+          <button className={styles.dayStep} onClick={() => shiftRange(-1)} aria-label="Previous period"><ChevronLeft size={16} /></button>
+          <button className={styles.datePick} onClick={() => setShowRange(v => !v)} aria-expanded={showRange} aria-label="Choose date range">
+            <span>{rangeTitle}</span>
+          </button>
+          <button className={styles.dayStep} onClick={() => shiftRange(1)} disabled={allDates || to >= todayKey()} aria-label="Next period"><ChevronRight size={16} /></button>
           <span className={styles.dateCount}>{inDate.length} chats</span>
           <button className={active.length || showChips ? styles.filterToggleOn : styles.filterToggle} onClick={() => setShowChips(v => !v)} aria-expanded={showChips}>
             <SlidersHorizontal size={14} />{active.length ? active.length : ""}
           </button>
-          {date !== todayKey() && <button className={styles.dateLink} onClick={() => setDate(todayKey())}>Today</button>}
-          {date !== "" && <button className={styles.dateLink} onClick={() => setDate("")}>All</button>}
+          {!isToday && <button className={styles.dateLink} onClick={() => setRange(todayKey(), todayKey())}>Today</button>}
+          {!allDates && <button className={styles.dateLink} onClick={setAll}>All</button>}
         </div>
+        {showRange && (
+          <div className={styles.rangeRow}>
+            <label className={styles.rangeField}>From
+              <input type="date" value={from} max={todayKey()} onChange={e => setRange(e.target.value, to || e.target.value)} />
+            </label>
+            <label className={styles.rangeField}>To
+              <input type="date" value={to} max={todayKey()} onChange={e => setRange(from || e.target.value, e.target.value)} />
+            </label>
+            <div className={styles.rangePresets}>
+              {preset("Aaj", todayKey(), todayKey())}
+              {preset("Kal", shiftDay(todayKey(), -1), shiftDay(todayKey(), -1))}
+              {preset("3 din", shiftDay(todayKey(), -2), todayKey())}
+              {preset("7 din", shiftDay(todayKey(), -6), todayKey())}
+              {preset("30 din", shiftDay(todayKey(), -29), todayKey())}
+              {preset("Is mahine", todayKey().slice(0, 8) + "01", todayKey())}
+              <button className={allDates ? styles.rangePresetOn : styles.rangePreset} onClick={setAll}>All</button>
+            </div>
+          </div>
+        )}
         <div className={`${styles.filterRow} ${showChips ? styles.filterRowOpen : ""}`}>
           {STATUS_FILTERS.map(chip)}
           <span className={styles.filterDivider} />
@@ -113,8 +163,8 @@ export function ChatList({ chats, selectedId, onOpen, hidden, loading }: { chats
         {loading && <div className={styles.listEmpty}>Loading chats…</div>}
         {!loading && list.length === 0 && (
           <div className={styles.listEmpty}>
-            {date ? `${dateTitle(date)} ko in filters ke saath koi chat nahi mili.` : "Koi chat nahi mili."}
-            {(date || active.length > 0) && <div><button className={styles.dateLink} onClick={() => { setDate(""); setActive([]); }}>Saari chats dikhao</button></div>}
+            {!allDates ? `${rangeTitle} mein in filters ke saath koi chat nahi mili.` : "Koi chat nahi mili."}
+            {(!allDates || active.length > 0) && <div><button className={styles.dateLink} onClick={() => { setAll(); setActive([]); }}>Saari chats dikhao</button></div>}
           </div>
         )}
         {list.map(c => (

@@ -84,6 +84,12 @@
 .datePick{position:relative;display:inline-flex;align-items:center;height:28px;padding:0 10px;border-radius:8px;border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:700;cursor:pointer;white-space:nowrap}
 .datePick input{position:absolute;inset:0;opacity:0;width:100%;cursor:pointer;border:0;padding:0}
 .dateCount{margin-left:auto;font-size:12px;color:var(--faint);white-space:nowrap}
+.rangeRow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--panel);font-size:12.5px;color:var(--muted)}
+.rangeField{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+.rangeField input{height:28px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);padding:0 6px;font-size:12.5px;color-scheme:light dark}
+.rangePresets{display:flex;flex-wrap:wrap;gap:6px;width:100%}
+.rangePreset,.rangePresetOn{border:1px solid var(--line);background:var(--bg);color:var(--muted);border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600}
+.rangePresetOn{background:var(--accent);border-color:var(--accent);color:#fff}
 .dateLink{border:0;background:transparent;color:var(--accent);font-weight:600;font-size:12.5px;padding:3px 4px}
 .filterDivider{flex-shrink:0;width:1px;background:var(--line);margin:3px 2px}
 .clearChip{flex-shrink:0;display:flex;align-items:center;gap:3px;border:0;background:transparent;color:var(--bad);font-size:12px;font-weight:600;padding:5px 6px}
