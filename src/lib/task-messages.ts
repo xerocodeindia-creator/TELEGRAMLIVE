@@ -6,7 +6,7 @@ export const TASK1_LINK = "📌1ST\n\n📝 Name: ANGEL ONE ✅\nGet- ₹100/- Re
 
 export const WHATSAPP_GROUP = "Ok, brother apka yeh saare applications pending for approval stage main hain yeh saare applications approved hote hi ham apko apne taraf se message karke apka payment proceed karwa denge 🛡️\n\nAccount Active Hone me (48 hour) lagenge 📌\n\nTab tak aap ye Group Join Kar Lijiye, Saare Update Apko ishi me milenge✅\n\n📌 Join : 🔗 https://chat.whatsapp.com/I1bRcqgxBZwJsWPbvaQg9O";
 
-export const TASK2_LINK = "📌 TASK - 2\n\n📝 Name: CHOICE FINX ✅\n\n🔗 Link: https://formlie.in/form/Y32qM1?r=Choice11M\n\n✅ Link pe click karke account open karke screenshot dijiye. Koi problem aaye to screenshot bhej dijiye, mai guide kar dunga.";
+export const TASK2_LINK = "📌 TASK - 2\n\n📝 Name: CHOICE FINX ✅\n\n🔗 Link: https://formlie.in/form/Y32qM1?r=Choice11Sana\n\n✅ Link pe click karke account open karke screenshot dijiye. Koi problem aaye to screenshot bhej dijiye, mai guide kar dunga.";
 
 export const TASK3_PRE = "Apka 2nd task complete ho gya hai , mai apko 3rd task ka link deta hu wait";
 
