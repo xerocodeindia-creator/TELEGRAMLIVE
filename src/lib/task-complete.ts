@@ -1,13 +1,10 @@
 // Marks a client's task complete (same state change + messages as the n8n workflow).
 // Used by the "Task complete" button and by the "Task submit" (screenshot proof) form.
-import { n8nConfig, readRows, upsertByClientId, sendTelegram, logAdminMessage, pauseAfterHumanReply, type Row } from "@/lib/n8n";
+import { n8nConfig, findByColumn, upsertByClientId, sendTelegram, logAdminMessage, pauseAfterHumanReply, type Row } from "@/lib/n8n";
 import { TASK_COMPLETION, TASK_IDS, type TaskId } from "@/lib/task-messages";
 
 export async function findClient(clientId: string): Promise<Row | undefined> {
-  const cfg = n8nConfig();
-  // client_progress is small, so read it and pick the row (works on every n8n version).
-  const rows = await readRows(cfg.tables.clients, {});
-  return rows.find(r => String(r.client_id || "") === clientId);
+  return findByColumn(n8nConfig().tables.clients, "client_id", clientId);
 }
 
 export function completedOf(row?: Row): string[] {
@@ -45,19 +42,22 @@ export async function completeTask(clientId: string, taskId: TaskId, sendMessage
 
   const sent: string[] = [];
   const failed: string[] = [];
+  let aiPausedNow = false;
   if (sendMessages) {
+    // Hand the chat to humans while the messages go out (runs in parallel).
+    const pausing = pauseAfterHumanReply(clientId).then(r => { aiPausedNow = r.changed; }).catch(() => undefined);
+    const logs: Promise<unknown>[] = [];
     for (const text of plan.messages) {
       try {
-        const result = await sendTelegram(clientId, text);
+        const result = await sendTelegram(clientId, text); // in order: the user must see them in sequence
         sent.push(text);
-        await logAdminMessage(clientId, text, String(result?.message_id || ""), "manual_admin_task", taskId).catch(() => undefined);
+        logs.push(logAdminMessage(clientId, text, String(result?.message_id || ""), "manual_admin_task", taskId).catch(() => undefined));
       } catch (error) {
         failed.push(error instanceof Error ? error.message : "send failed");
         break;
       }
     }
+    await Promise.all([pausing, ...logs]);
   }
-  let aiPausedNow = false;
-  if (sent.length) { try { aiPausedNow = (await pauseAfterHumanReply(clientId)).changed; } catch {} }
   return { completed, next: plan.next, sentCount: sent.length, failed, aiPausedNow };
 }

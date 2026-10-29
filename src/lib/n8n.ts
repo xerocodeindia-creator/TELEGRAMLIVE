@@ -60,6 +60,17 @@ export async function readRows(tableId: string, opts: { sortBy?: string; max?: n
   return out;
 }
 
+/** Finds the first row where column == value: uses the API filter (one small request), falls back to a scan. */
+export async function findByColumn(tableId: string, column: string, value: string): Promise<Row | undefined> {
+  const match = (r: Row) => String(r[column] ?? "") === value;
+  try {
+    const { rows } = await listRows(tableId, { limit: 5, filter: { type: "and", filters: [{ columnName: column, condition: "eq", value }] } });
+    const hit = rows.find(match);
+    if (hit || rows.length === 0) return hit;
+  } catch {}
+  return (await readRows(tableId, { max: 20000 })).find(match);
+}
+
 export async function insertRows(tableId: string, rows: Row[]) {
   const { baseUrl, apiKey } = n8nConfig();
   const response = await fetch(new URL(`/api/v1/data-tables/${encodeURIComponent(tableId)}/rows`, baseUrl), {
@@ -137,8 +148,7 @@ export const GLOBAL_CONTROL_ID = "global";
  */
 export async function pauseAfterHumanReply(clientId: string) {
   const { tables } = n8nConfig();
-  const rows = await readRows(tables.controls, { max: 5000 });
-  const row = rows.find(r => String(r.client_id || "") === clientId);
+  const row = await findByColumn(tables.controls, "client_id", clientId);
   const already = row && (row.ai_paused === true || String(row.ai_paused) === "true");
   if (already) return { paused: true, changed: false };
   await upsertByClientId(tables.controls, clientId, {

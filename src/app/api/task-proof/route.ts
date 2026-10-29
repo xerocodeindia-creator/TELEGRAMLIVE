@@ -2,15 +2,16 @@ import { NextResponse } from "next/server";
 import { requireAdmin, jsonError, privateJsonHeaders } from "@/lib/auth";
 import { n8nConfig, insertRows } from "@/lib/n8n";
 import { TASK_IDS, type TaskId } from "@/lib/task-messages";
-import { completeTask, completedOf, findClient, StepError } from "@/lib/task-complete";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const TASK_NAMES: Record<TaskId, string> = { task_1_angel_one: "ANGEL ONE", task_2_choice_finx: "CHOICE FINX", task_3: "BAJAJ" };
+const clean = (v: unknown, max: number) => String(v ?? "").replace(/[\r\n]+/g, " ").trim().slice(0, max);
 
-// Human (dashboard) submits a task proof: screenshot + details go to the admin Telegram chat,
-// the proof is saved in task_submissions, and (optionally) the task is marked complete.
+// Human (dashboard) submits a task proof: screenshot + details go to the admin Telegram chat and
+// the proof is saved in task_submissions. Marking the task complete is a separate call
+// (/api/task-action) that the dashboard fires right after, so the admin send returns fast.
 export async function POST(req: Request) {
   if (!(await requireAdmin())) return jsonError("Unauthorized", 401);
   const origin = req.headers.get("origin");
@@ -22,8 +23,9 @@ export async function POST(req: Request) {
   const details = String(body.details || "").replace(/\r\n/g, "\n").trim();
   const imageBase64 = String(body.imageBase64 || "").replace(/^data:[^,]*,/, "");
   const mimeType = /^image\/(jpeg|png|webp)$/.test(String(body.mimeType || "")) ? String(body.mimeType) : "image/jpeg";
-  const markComplete = body.markComplete !== false;
-  const sendMessages = body.sendMessages !== false;
+  const userName = clean(body.userName, 80);
+  const userPhone = clean(body.userPhone, 20);
+  const status = String(body.completeNote || "");
   if (!/^\d{1,24}$/.test(clientId)) return jsonError("Invalid Telegram user ID");
   if (!TASK_IDS.includes(taskId)) return jsonError("Unknown task");
   if (!details) return jsonError("Name / number details likho");
@@ -34,26 +36,19 @@ export async function POST(req: Request) {
   const cfg = n8nConfig();
   if (!cfg.configured || !cfg.proxySecret) return jsonError("n8n is not configured on the server.", 503);
 
-  let row: Record<string, any> | undefined;
-  try { row = await findClient(clientId); }
-  catch (error) { return NextResponse.json({ error: "Could not read client progress.", detail: error instanceof Error ? error.message : "" }, { status: 502, headers: privateJsonHeaders }); }
-
-  const taskNo = TASK_IDS.indexOf(taskId) + 1;
-  const alreadyDone = completedOf(row).includes(taskId);
-  const willComplete = markComplete && !alreadyDone;
   const when = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: true });
   const caption = [
-    `🧑‍💼 HUMAN SUBMIT — ${TASK_NAMES[taskId]} (Task ${taskNo})`,
+    `🧑‍💼 HUMAN SUBMIT — ${TASK_NAMES[taskId]} (Task ${TASK_IDS.indexOf(taskId) + 1})`,
     "",
-    `User: ${row?.first_name || "-"}`,
+    `User: ${userName || "-"}`,
     `Telegram ID: ${clientId}`,
-    `Bot phone: ${row?.phone_number || "-"}`,
+    `Bot phone: ${userPhone || "-"}`,
     "",
     "📝 Details:",
     details,
     "",
     `Submitted: ${when} IST (dashboard)`,
-    willComplete ? "✅ Task complete mark kiya" : alreadyDone ? "ℹ️ Ye task pehle se complete tha" : "ℹ️ Sirf proof bheja (task complete mark nahi kiya)",
+    status === "complete" ? "✅ Task complete mark kiya" : status === "already" ? "ℹ️ Ye task pehle se complete tha" : "ℹ️ Sirf proof bheja (task complete mark nahi kiya)",
   ].join("\n").slice(0, 1024);
 
   // 1) Screenshot + details to the admin chat (through n8n, live bot credential).
@@ -81,8 +76,8 @@ export async function POST(req: Request) {
     await insertRows(cfg.tables.submissions, [{
       submission_id: `h${Date.now().toString(36)}_${clientId}`,
       client_id: clientId,
-      first_name: String(row?.first_name || ""),
-      phone_number: String(row?.phone_number || ""),
+      first_name: userName,
+      phone_number: userPhone,
       task_id: taskId,
       file_id: fileId,
       ai_analysis: `HUMAN SUBMIT (dashboard): ${details}`,
@@ -95,13 +90,5 @@ export async function POST(req: Request) {
     saved = true;
   } catch {}
 
-  // 3) Optionally mark the task complete + send the next task to the user.
-  let completion: Awaited<ReturnType<typeof completeTask>> | null = null;
-  let completionError = "";
-  if (willComplete) {
-    try { completion = await completeTask(clientId, taskId, sendMessages, row); }
-    catch (error) { completionError = error instanceof StepError ? `${error.message} ${error.detail}`.trim() : "Task update failed"; }
-  }
-
-  return NextResponse.json({ adminSent: true, adminMessageId, saved, alreadyDone, completed: Boolean(completion), completion, completionError }, { headers: privateJsonHeaders });
+  return NextResponse.json({ adminSent: true, adminMessageId, saved }, { headers: privateJsonHeaders });
 }

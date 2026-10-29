@@ -224,14 +224,14 @@ export default function DashboardPage() {
   }
 
   async function submitProof(chat: Chat, proof: ProofInput) {
-    const r = await fetch("/api/task-proof", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clientId: chat.id, ...proof }) });
+    const completeNote = proof.markComplete ? "complete" : chat.client?.completed.includes(proof.taskId) ? "already" : "";
+    const r = await fetch("/api/task-proof", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clientId: chat.id, taskId: proof.taskId, details: proof.details, imageBase64: proof.imageBase64, mimeType: proof.mimeType, userName: chat.name, userPhone: chat.phone, completeNote }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error([d.error, d.detail].filter(Boolean).join(": ") || "Submit failed");
-    if (d.completionError) showToast(`Admin ko bhej diya, par task update nahi hua: ${d.completionError}`);
-    else if (d.completion?.failed?.length) showToast(`Admin ko bhej diya + task complete, par user ko message nahi gaya: ${d.completion.failed[0]}`);
-    else showToast(d.completed ? (proof.sendMessages ? "Admin ko bhej diya ✓ Task complete + agla task user ko gaya" : "Admin ko bhej diya ✓ Task complete") : "Admin ko screenshot + details bhej diye ✓");
-    cursorRef.current = { ...cursorRef.current, clientsSince: "" };
-    window.setTimeout(poll, 300);
+    if (!proof.markComplete) { showToast("Admin ko screenshot + details bhej diye ✓"); return; }
+    // Admin already has it: close the form now and finish the task update in the background.
+    showToast("Admin ko bhej diya ✓ Task update ho raha hai…");
+    completeTask(chat, proof.taskId, proof.sendMessages).catch(e => showToast(`Admin ko bhej diya, par task update nahi hua: ${e instanceof Error ? e.message : "error"}`));
   }
 
   async function logout() { await fetch("/api/auth", { method: "DELETE" }); location.replace("/login"); }
