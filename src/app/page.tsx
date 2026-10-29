@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bot, LogOut, Moon, Sun, Hand, MessageCircle, LayoutGrid, WifiOff } from "lucide-react";
 import styles from "./dashboard.module.css";
 import { ChatList } from "@/components/ChatList";
-import { ChatView } from "@/components/ChatView";
+import { ChatView, type ProofInput } from "@/components/ChatView";
 import { Pipeline } from "@/components/Pipeline";
 import { type Chat, type ClientRow, type Controls, type Msg, ms, msgCmp, dayKey, stageOf } from "@/lib/ui";
 
@@ -223,6 +223,17 @@ export default function DashboardPage() {
     window.setTimeout(poll, 300);
   }
 
+  async function submitProof(chat: Chat, proof: ProofInput) {
+    const r = await fetch("/api/task-proof", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clientId: chat.id, ...proof }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error([d.error, d.detail].filter(Boolean).join(": ") || "Submit failed");
+    if (d.completionError) showToast(`Admin ko bhej diya, par task update nahi hua: ${d.completionError}`);
+    else if (d.completion?.failed?.length) showToast(`Admin ko bhej diya + task complete, par user ko message nahi gaya: ${d.completion.failed[0]}`);
+    else showToast(d.completed ? (proof.sendMessages ? "Admin ko bhej diya ✓ Task complete + agla task user ko gaya" : "Admin ko bhej diya ✓ Task complete") : "Admin ko screenshot + details bhej diye ✓");
+    cursorRef.current = { ...cursorRef.current, clientsSince: "" };
+    window.setTimeout(poll, 300);
+  }
+
   async function logout() { await fetch("/api/auth", { method: "DELETE" }); location.replace("/login"); }
 
   function openChat(id: string) { setSelectedId(id); setMobileChatOpen(true); setView("chats"); }
@@ -263,6 +274,7 @@ export default function DashboardPage() {
             onSend={sendMessage}
             onToggleAi={toggleUser}
             onCompleteTask={completeTask}
+            onSubmitProof={submitProof}
             connected={Boolean(connected)}
           />
         </div>

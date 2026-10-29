@@ -111,7 +111,7 @@
 .chatActions{display:flex;align-items:center;gap:7px;flex-shrink:0}
 .aiBadge{font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:999px}
 .aiActive{background:var(--ok-soft);color:var(--ok)}.aiPaused{background:var(--warn-soft);color:var(--warn)}.aiBlocked{background:var(--bad-soft);color:var(--bad)}
-.completeButton,.pauseButton,.resumeButton{display:flex;align-items:center;gap:6px;border-radius:10px;padding:7px 11px;font-weight:600;font-size:13px;border:1px solid var(--line);background:var(--panel);color:var(--text)}
+.completeButton,.pauseButton,.resumeButton,.proofButton{display:flex;align-items:center;gap:6px;border-radius:10px;padding:7px 11px;font-weight:600;font-size:13px;border:1px solid var(--line);background:var(--panel);color:var(--text)}
 .completeButton{background:var(--accent);border-color:var(--accent);color:#fff}
 .pauseButton:hover{border-color:var(--warn);color:var(--warn)}.resumeButton{border-color:var(--ok);color:var(--ok)}
 .progressStrip{display:flex;gap:6px;padding:7px 14px;background:var(--panel);border-bottom:1px solid var(--line);overflow-x:auto;flex-shrink:0;scrollbar-width:none}
@@ -169,6 +169,17 @@
 .ghostButton,.primaryButton{border-radius:10px;padding:8px 14px;font-weight:600;font-size:13px;border:1px solid var(--line);background:var(--panel);color:var(--text)}
 .ghostButton:hover{background:var(--row-hover)}
 .primaryButton{background:var(--accent);border-color:var(--accent);color:#fff}
+.primaryButton:disabled,.ghostButton:disabled{opacity:.55;cursor:not-allowed}
+.proofModal{width:min(480px,100%);max-height:calc(100dvh - 32px);overflow:auto}
+.proofModal .checkLine{margin-top:8px}
+.taskPicker{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 12px}
+.taskPick,.taskPickActive{border-radius:999px;padding:6px 11px;font-size:12.5px;font-weight:600;border:1px solid var(--line);background:var(--panel);color:var(--text)}
+.taskPickActive{background:var(--accent);border-color:var(--accent);color:#fff}
+.fieldLabel{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin:10px 0 6px}
+.fieldInput{width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:10px;padding:9px 11px;font:inherit;font-size:14px;background:var(--panel-2);color:var(--text);resize:vertical}
+.fieldHint{font-size:13px;color:var(--muted);margin:10px 0 0 !important}
+.dropZone{width:100%;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border:1.5px dashed var(--line);border-radius:12px;background:var(--panel-2);color:var(--muted);font-size:13px;padding:10px;cursor:pointer}
+.dropZone img{max-width:100%;max-height:260px;border-radius:8px;object-fit:contain}
 .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:70;background:#1f2933;color:#fff;padding:10px 16px;border-radius:12px;font-size:13.5px;box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:calc(100vw - 32px)}
 
 /* Tasks / pipeline view */
@@ -211,8 +222,8 @@
   .backButton{display:grid;place-items:center}
   .chatHeader{padding:6px 8px}
   .chatActions .aiBadge{display:none}
-  .completeButton span,.pauseButton span,.resumeButton span{display:none}
-  .completeButton,.pauseButton,.resumeButton{padding:8px}
+  .completeButton span,.pauseButton span,.resumeButton span,.proofButton span{display:none}
+  .completeButton,.pauseButton,.resumeButton,.proofButton{padding:8px}
   .messageScroll{padding:8px 10px 12px}
   .bubble{max-width:86%}
   .jumpButton{right:14px;bottom:78px}
