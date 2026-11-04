@@ -7,11 +7,11 @@ import { ChatList } from "@/components/ChatList";
 import { ChatView, type ProofInput } from "@/components/ChatView";
 import { Pipeline } from "@/components/Pipeline";
 import { type Chat, type ClientRow, type Controls, type Msg, ms, msgCmp, dayKey, stageOf } from "@/lib/ui";
-import { BOT_NAME } from "@/lib/brand";
+import { BOT_NAME, IS_AISHA } from "@/lib/brand";
 
 const POLL_VISIBLE = 1500;
 // Task 1 / Task 2 / Task 3 link messages (bot or admin). The first one marks the user as "qualified".
-const TASK_LINK_RE = /Name:\s*ANGEL ONE|TASK\s*-\s*2|TASK\s*-\s*3/i;
+const TASK_LINK_RE = IS_AISHA ? /Name:\s*HDFC SKY|Name:\s*CHOICE/i : /Name:\s*ANGEL ONE|TASK\s*-\s*2|TASK\s*-\s*3/i;
 const POLL_HIDDEN = 8000;
 
 function ThemeToggle() {

@@ -1,7 +1,7 @@
 // Marks a client's task complete (same state change + messages as the n8n workflow).
 // Used by the "Task complete" button and by the "Task submit" (screenshot proof) form.
 import { n8nConfig, findByColumn, upsertByClientId, sendTelegram, logAdminMessage, pauseAfterHumanReply, type Row } from "@/lib/n8n";
-import { TASK_COMPLETION, TASK_IDS, type TaskId } from "@/lib/task-messages";
+import { TASK3_ON_HOLD, TASK_COMPLETION, TASK_IDS, type TaskId } from "@/lib/task-messages";
 
 export async function findClient(clientId: string): Promise<Row | undefined> {
   return findByColumn(n8nConfig().tables.clients, "client_id", clientId);
@@ -15,6 +15,7 @@ export function completedOf(row?: Row): string[] {
 export class StepError extends Error { constructor(message: string, public detail = "") { super(message); } }
 
 export async function completeTask(clientId: string, taskId: TaskId, sendMessages: boolean, row?: Row) {
+  if (TASK3_ON_HOLD && taskId === "task_3") throw new StepError("Task 3 abhi band hai, isliye complete nahi ho sakta.");
   const cfg = n8nConfig();
   if (!row) {
     try { row = await findClient(clientId); }

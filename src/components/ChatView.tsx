@@ -4,7 +4,7 @@ import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, use
 import { ArrowLeft, Bot, Check, CheckCheck, CirclePause, CirclePlay, Clock3, AlertCircle, Send, ChevronDown, X, Zap, ImageOff, MessageCircle, CircleCheckBig, Phone, Hash, ImagePlus } from "lucide-react";
 import styles from "@/app/dashboard.module.css";
 import { type Chat, type Msg, TASKS, avatarColor, dayKey, dayLabel, fullDate, initials, isMedia, ms, timeOf } from "@/lib/ui";
-import { QUICK_REPLIES } from "@/lib/task-messages";
+import { NEXT_TEXT, QUICK_REPLIES } from "@/lib/task-messages";
 import { BOT_NAME } from "@/lib/brand";
 
 const URL_RE = /(https?:\/\/[^\s<]+[^\s<.,:;"')\]])/g;
@@ -230,7 +230,7 @@ function TaskModal({ chat, taskIndex, onClose, onConfirm }: { chat: Chat; taskIn
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const task = TASKS[taskIndex];
-  const nextText: ReactNode = taskIndex === 0 ? "WhatsApp group message + Task 2 (Choice FinX) link" : taskIndex === 1 ? "\"2nd task complete\" message + Task 3 (Bajaj) link" : "Bajaj completion message";
+  const nextText: ReactNode = NEXT_TEXT[taskIndex];
   return (
     <div className={styles.modalBackdrop} onClick={onClose}>
       <div className={styles.modal} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true">
@@ -278,7 +278,7 @@ function ProofModal({ chat, defaultIndex, onClose, onSubmit }: { chat: Chat; def
   const fileRef = useRef<HTMLInputElement | null>(null);
   const task = TASKS[taskIndex];
   const alreadyDone = !!chat.client?.completed.includes(task.id);
-  const nextText = taskIndex === 0 ? "WhatsApp group message + Task 2 (Choice FinX) link" : taskIndex === 1 ? "\"2nd task complete\" message + Task 3 (Bajaj) link" : "Bajaj completion message";
+  const nextText = NEXT_TEXT[taskIndex];
 
   const pick = async (file?: File | null) => {
     if (!file) return;

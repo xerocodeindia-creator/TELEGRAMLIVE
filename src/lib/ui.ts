@@ -1,4 +1,5 @@
 // Shared client-side types and formatting helpers for the dashboard.
+import { IS_AISHA } from "@/lib/brand";
 
 export type Msg = {
   id: number;
@@ -54,18 +55,18 @@ export type Chat = {
 export type Stage = { key: "onboarding" | "t1" | "t2" | "t3" | "done"; short: string; label: string; index: number };
 
 export const TASKS = [
-  { id: "task_1_angel_one", name: "Angel One", short: "T1" },
-  { id: "task_2_choice_finx", name: "Choice FinX", short: "T2" },
-  { id: "task_3", name: "Bajaj", short: "T3" },
+  { id: "task_1_angel_one", name: IS_AISHA ? "HDFC SKY" : "Angel One", short: "T1" },
+  { id: "task_2_choice_finx", name: IS_AISHA ? "Choice" : "Choice FinX", short: "T2" },
+  { id: "task_3", name: IS_AISHA ? "Waiting" : "Bajaj", short: "T3" },
 ] as const;
 
 export function stageOf(c?: ClientRow): Stage {
   if (!c) return { key: "onboarding", short: "New", label: "Onboarding", index: -1 };
   const done = c.completed || [];
   if (c.currentTask === "completed" || c.flowStep === "all_tasks_completed" || done.includes("task_3")) return { key: "done", short: "Done", label: "All tasks done", index: 3 };
-  if (c.currentTask === "task_3" || /^task_3/.test(c.flowStep)) return { key: "t3", short: "T3", label: "Task 3 · Bajaj", index: 2 };
-  if (c.currentTask === "task_2_choice_finx" || /^task_2/.test(c.flowStep)) return { key: "t2", short: "T2", label: "Task 2 · Choice FinX", index: 1 };
-  if (c.currentTask === "task_1_angel_one" || /^task_1/.test(c.flowStep)) return { key: "t1", short: "T1", label: "Task 1 · Angel One", index: 0 };
+  if (c.currentTask === "task_3" || /^task_3/.test(c.flowStep)) return { key: "t3", short: "T3", label: `Task 3 · ${TASKS[2].name}`, index: 2 };
+  if (c.currentTask === "task_2_choice_finx" || /^task_2/.test(c.flowStep)) return { key: "t2", short: "T2", label: `Task 2 · ${TASKS[1].name}`, index: 1 };
+  if (c.currentTask === "task_1_angel_one" || /^task_1/.test(c.flowStep)) return { key: "t1", short: "T1", label: `Task 1 · ${TASKS[0].name}`, index: 0 };
   return { key: "onboarding", short: "New", label: "Onboarding", index: -1 };
 }
 
