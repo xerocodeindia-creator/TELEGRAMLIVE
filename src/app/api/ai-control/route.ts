@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin, jsonError, privateJsonHeaders } from "@/lib/auth";
 import { n8nConfig, upsertByClientId, GLOBAL_CONTROL_ID } from "@/lib/n8n";
+import { BOT_NAME } from "@/lib/brand";
 
 // clientId = a Telegram user ID (pause AI for one user) or "global" (Human mode for everyone:
 // the workflow stops all automatic replies for users who already got Task 1; onboarding keeps working).
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
       paused_at: paused ? new Date().toISOString() : null,
       reason: isGlobal
         ? (paused ? "HUMAN_MODE: AI off for everyone from dashboard" : "Global AI turned on from dashboard")
-        : (paused ? "HUMAN_PAUSE: Paused from Aarohi dashboard" : "Resumed from Aarohi dashboard"),
+        : (paused ? `HUMAN_PAUSE: Paused from ${BOT_NAME} dashboard` : `Resumed from ${BOT_NAME} dashboard`),
     });
     return NextResponse.json({ updated: true, clientId, paused, result }, { headers: privateJsonHeaders });
   } catch (error) {

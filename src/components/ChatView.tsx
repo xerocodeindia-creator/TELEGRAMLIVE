@@ -5,6 +5,7 @@ import { ArrowLeft, Bot, Check, CheckCheck, CirclePause, CirclePlay, Clock3, Ale
 import styles from "@/app/dashboard.module.css";
 import { type Chat, type Msg, TASKS, avatarColor, dayKey, dayLabel, fullDate, initials, isMedia, ms, timeOf } from "@/lib/ui";
 import { QUICK_REPLIES } from "@/lib/task-messages";
+import { BOT_NAME } from "@/lib/brand";
 
 const URL_RE = /(https?:\/\/[^\s<]+[^\s<.,:;"')\]])/g;
 function Linkified({ text }: { text: string }) {
@@ -178,7 +179,7 @@ export function ChatView({ chat, messages, visible, globalHuman, connected, onBa
               return (
                 <div key={m.tempKey || m.id} className={`${styles.bubbleRow} ${out ? styles.rowOut : styles.rowIn} ${first ? styles.groupFirst : ""}`}>
                   <div className={`${styles.bubble} ${m.direction === "in" ? styles.bubbleIn : m.direction === "admin" ? styles.bubbleAdmin : styles.bubbleBot} ${last ? styles.bubbleTail : ""} ${media ? styles.bubbleMedia : ""}`} title={fullDate(m.time)}>
-                    {first && out && <span className={styles.sender}>{m.direction === "admin" ? (m.status === "manual_admin_task" ? "You · task update" : "You") : <><Bot size={11} /> Aarohi bot</>}</span>}
+                    {first && out && <span className={styles.sender}>{m.direction === "admin" ? (m.status === "manual_admin_task" ? "You · task update" : "You") : <><Bot size={11} /> {BOT_NAME} bot</>}</span>}
                     {media && (m.fileId ? <Photo fileId={m.fileId} onOpen={setLightbox} onLoad={() => { if (atBottom.current) scrollToBottom(); }} /> : <div className={styles.photoFailed}><ImageOff size={22} /><span>Attachment</span></div>)}
                     {!media && !m.text && m.type !== "text" && <span className={styles.mediaNote}>🎙️ {m.type} message</span>}
                     {m.text && <p className={styles.bubbleText}><Linkified text={m.text} /></p>}

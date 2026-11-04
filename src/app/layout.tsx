@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { BOT_NAME } from "@/lib/brand";
 
 export const metadata: Metadata = {
-  title: "Aarohi Control Center",
-  description: "Private operations dashboard for Aarohi Telegram automation.",
+  title: `${BOT_NAME} Control Center`,
+  description: `Private operations dashboard for ${BOT_NAME} Telegram automation.`,
 };
 
 // Applies the saved theme (or the system preference) before the page paints, so dark mode doesn't flash light first.

@@ -7,6 +7,7 @@ import { ChatList } from "@/components/ChatList";
 import { ChatView, type ProofInput } from "@/components/ChatView";
 import { Pipeline } from "@/components/Pipeline";
 import { type Chat, type ClientRow, type Controls, type Msg, ms, msgCmp, dayKey, stageOf } from "@/lib/ui";
+import { BOT_NAME } from "@/lib/brand";
 
 const POLL_VISIBLE = 1500;
 // Task 1 / Task 2 / Task 3 link messages (bot or admin). The first one marks the user as "qualified".
@@ -166,7 +167,7 @@ export default function DashboardPage() {
 
   // Number of chats waiting for a reply (same on every device).
   const totalUnread = chats.filter(c => c.unread > 0).length;
-  useEffect(() => { document.title = totalUnread ? `(${totalUnread}) Aarohi Control Center` : "Aarohi Control Center"; }, [totalUnread]);
+  useEffect(() => { document.title = totalUnread ? `(${totalUnread}) ${BOT_NAME} Control Center` : `${BOT_NAME} Control Center`; }, [totalUnread]);
 
   async function toggleGlobal() {
     const turningOff = !controls.global.paused;
@@ -244,7 +245,7 @@ export default function DashboardPage() {
   return (
     <main className={styles.shell}>
       <header className={styles.topbar}>
-        <div className={styles.brand}><div className={styles.brandMark}><Bot size={20} /></div><div><strong>Aarohi</strong><small>Control Center</small></div></div>
+        <div className={styles.brand}><div className={styles.brandMark}><Bot size={20} /></div><div><strong>{BOT_NAME}</strong><small>Control Center</small></div></div>
         <nav className={styles.viewTabs}>
           <button className={view === "chats" ? styles.viewTabActive : styles.viewTab} onClick={() => setView("chats")}><MessageCircle size={16} /><span>Chats</span>{totalUnread > 0 && <b>{totalUnread}</b>}</button>
           <button className={view === "pipeline" ? styles.viewTabActive : styles.viewTab} onClick={() => setView("pipeline")}><LayoutGrid size={16} /><span>Tasks</span></button>
