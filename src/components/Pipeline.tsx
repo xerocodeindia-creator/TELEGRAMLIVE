@@ -3,7 +3,8 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Users, CheckCheck, CirclePause, UserPlus, Trophy } from "lucide-react";
 import styles from "@/app/dashboard.module.css";
-import { type Chat, TASKS, avatarColor, fullDate, initials, ms, dayKey } from "@/lib/ui";
+import { IS_AISHA } from "@/lib/brand";
+import { type Chat, TASKS, taskTitle, avatarColor, fullDate, initials, ms, dayKey } from "@/lib/ui";
 
 export function Pipeline({ chats, onOpen }: { chats: Chat[]; onOpen: (id: string) => void }) {
   const [tab, setTab] = useState<"active" | "completed">("active");
@@ -21,7 +22,7 @@ export function Pipeline({ chats, onOpen }: { chats: Chat[]; onOpen: (id: string
   const rows = useMemo(() => {
     const task = TASKS[taskIndex];
     if (tab === "active") return chats.filter(c => c.stage.index === taskIndex).map(c => ({ c, when: c.lastTime }));
-    const stampKey = (["t1", "t2", "t3"] as const)[taskIndex];
+    const stampKey = ({ task_1_angel_one: "t1", task_2_choice_finx: "t2", task_3: "t3" } as const)[task.id];
     return chats
       .filter(c => c.client?.completed.includes(task.id))
       .map(c => ({ c, when: ms(c.client?.[stampKey] || "") }))
@@ -34,7 +35,7 @@ export function Pipeline({ chats, onOpen }: { chats: Chat[]; onOpen: (id: string
       <div className={styles.statGrid}>
         <Stat icon={<Users size={18} />} label="Total users" value={stats.total} />
         <Stat icon={<UserPlus size={18} />} label="Onboarding" value={stats.onboarding} />
-        {TASKS.map((t, i) => <Stat key={t.id} icon={<span className={styles.statNum}>{i + 1}</span>} label={`On Task ${i + 1} · ${t.name}`} value={stats.t[i]} />)}
+        {TASKS.map((t, i) => <Stat key={t.id} icon={<span className={styles.statNum}>{i + 1}</span>} label={IS_AISHA ? `On ${t.name}` : `On ${taskTitle(i)} · ${t.name}`} value={stats.t[i]} />)}
         <Stat icon={<Trophy size={18} />} label="All tasks done" value={stats.done} />
         <Stat icon={<CirclePause size={18} />} label="AI paused users" value={stats.paused} />
       </div>
@@ -49,7 +50,7 @@ export function Pipeline({ chats, onOpen }: { chats: Chat[]; onOpen: (id: string
         <div className={styles.taskTabs}>
           {TASKS.map((t, i) => {
             const count = tab === "active" ? stats.t[i] : chats.filter(c => c.client?.completed.includes(t.id)).length;
-            return <button key={t.id} className={taskIndex === i ? styles.taskTabActive : styles.taskTab} onClick={() => setTaskIndex(i)}>Task {i + 1} · {t.name}<span>{count}</span></button>;
+            return <button key={t.id} className={taskIndex === i ? styles.taskTabActive : styles.taskTab} onClick={() => setTaskIndex(i)}>{IS_AISHA ? t.name : `Task ${i + 1} · ${t.name}`}<span>{count}</span></button>;
           })}
         </div>
         <div className={styles.pipeRows}>

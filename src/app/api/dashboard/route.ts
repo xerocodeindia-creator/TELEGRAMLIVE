@@ -13,6 +13,8 @@ const FULL_MESSAGES = 4000;
 function mapClient(r: Row) {
   let completed: string[] = [];
   try { const v = JSON.parse(String(r.completed_tasks || "[]")); if (Array.isArray(v)) completed = v.map(String); } catch {}
+  let skipped: string[] = [];
+  try { const v = JSON.parse(String(r.skipped_tasks || "[]")); if (Array.isArray(v)) skipped = v.map(String); } catch {}
   return {
     id: String(r.client_id || ""),
     name: String(r.first_name || "Telegram user"),
@@ -21,6 +23,7 @@ function mapClient(r: Row) {
     currentTask: String(r.current_task || ""),
     proofStatus: String(r.proof_status || ""),
     completed,
+    skipped,
     updatedAt: r.updatedAt ? String(r.updatedAt) : "",
     t1: r.task_1_completed_at ? String(r.task_1_completed_at) : "",
     t2: r.task_2_completed_at ? String(r.task_2_completed_at) : "",

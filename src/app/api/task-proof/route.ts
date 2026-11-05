@@ -41,7 +41,7 @@ export async function POST(req: Request) {
 
   const when = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: true });
   const caption = [
-    `🧑‍💼 HUMAN SUBMIT — ${TASK_NAMES[taskId]} (Task ${TASK_IDS.indexOf(taskId) + 1})`,
+    IS_AISHA ? `🧑‍💼 HUMAN SUBMIT — ${TASK_NAMES[taskId]}` : `🧑‍💼 HUMAN SUBMIT — ${TASK_NAMES[taskId]} (Task ${TASK_IDS.indexOf(taskId) + 1})`,
     "",
     `User: ${userName || "-"}`,
     `Telegram ID: ${clientId}`,

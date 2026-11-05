@@ -25,6 +25,8 @@ export type ClientRow = {
   currentTask: string;
   proofStatus: string;
   completed: string[];
+  /** Aisha: tasks skipped because the user already had that account. */
+  skipped?: string[];
   updatedAt: string;
   t1: string;
   t2: string;
@@ -54,19 +56,31 @@ export type Chat = {
 
 export type Stage = { key: "onboarding" | "t1" | "t2" | "t3" | "done"; short: string; label: string; index: number };
 
-export const TASKS = [
-  { id: "task_1_angel_one", name: IS_AISHA ? "HDFC SKY" : "Angel One", short: "T1" },
-  { id: "task_2_choice_finx", name: IS_AISHA ? "Choice" : "Choice FinX", short: "T2" },
-  { id: "task_3", name: IS_AISHA ? "Waiting" : "Bajaj", short: "T3" },
-] as const;
+// Display order. Aisha's new users do Choice first. IDs stay tied to the app, not the position.
+export const TASKS = IS_AISHA
+  ? ([
+      { id: "task_2_choice_finx", name: "Choice", short: "T2" },
+      { id: "task_1_angel_one", name: "HDFC SKY", short: "T1" },
+      { id: "task_3", name: "Waiting", short: "T3" },
+    ] as const)
+  : ([
+      { id: "task_1_angel_one", name: "Angel One", short: "T1" },
+      { id: "task_2_choice_finx", name: "Choice FinX", short: "T2" },
+      { id: "task_3", name: "Bajaj", short: "T3" },
+    ] as const);
+
+/** How a task is named on screen: Aisha uses the app name, because the order differs per user. */
+export const taskTitle = (i: number) => (IS_AISHA ? TASKS[i].name : `Task ${i + 1}`);
+const stageLabel = (i: number) => (IS_AISHA ? TASKS[i].name : `Task ${i + 1} · ${TASKS[i].name}`);
+const taskPos = (id: string) => TASKS.findIndex(t => t.id === id);
 
 export function stageOf(c?: ClientRow): Stage {
   if (!c) return { key: "onboarding", short: "New", label: "Onboarding", index: -1 };
   const done = c.completed || [];
   if (c.currentTask === "completed" || c.flowStep === "all_tasks_completed" || done.includes("task_3")) return { key: "done", short: "Done", label: "All tasks done", index: 3 };
-  if (c.currentTask === "task_3" || /^task_3/.test(c.flowStep)) return { key: "t3", short: "T3", label: `Task 3 · ${TASKS[2].name}`, index: 2 };
-  if (c.currentTask === "task_2_choice_finx" || /^task_2/.test(c.flowStep)) return { key: "t2", short: "T2", label: `Task 2 · ${TASKS[1].name}`, index: 1 };
-  if (c.currentTask === "task_1_angel_one" || /^task_1/.test(c.flowStep)) return { key: "t1", short: "T1", label: `Task 1 · ${TASKS[0].name}`, index: 0 };
+  if (c.currentTask === "task_3" || /^task_3/.test(c.flowStep)) return { key: "t3", short: IS_AISHA ? "Wait" : "T3", label: stageLabel(taskPos("task_3")), index: taskPos("task_3") };
+  if (c.currentTask === "task_2_choice_finx" || /^task_2/.test(c.flowStep)) return { key: "t2", short: IS_AISHA ? "Choice" : "T2", label: stageLabel(taskPos("task_2_choice_finx")), index: taskPos("task_2_choice_finx") };
+  if (c.currentTask === "task_1_angel_one" || /^task_1/.test(c.flowStep)) return { key: "t1", short: IS_AISHA ? "HDFC" : "T1", label: stageLabel(taskPos("task_1_angel_one")), index: taskPos("task_1_angel_one") };
   return { key: "onboarding", short: "New", label: "Onboarding", index: -1 };
 }
 

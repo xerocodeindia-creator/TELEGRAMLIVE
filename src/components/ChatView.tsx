@@ -3,8 +3,9 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowLeft, Bot, Check, CheckCheck, CirclePause, CirclePlay, Clock3, AlertCircle, Send, ChevronDown, X, Zap, ImageOff, MessageCircle, CircleCheckBig, Phone, Hash, ImagePlus } from "lucide-react";
 import styles from "@/app/dashboard.module.css";
-import { type Chat, type Msg, TASKS, avatarColor, dayKey, dayLabel, fullDate, initials, isMedia, ms, timeOf } from "@/lib/ui";
-import { NEXT_TEXT, QUICK_REPLIES } from "@/lib/task-messages";
+import { type Chat, type Msg, TASKS, taskTitle, avatarColor, dayKey, dayLabel, fullDate, initials, isMedia, ms, timeOf } from "@/lib/ui";
+import { IS_AISHA } from "@/lib/brand";
+import { QUICK_REPLIES, nextTextFor } from "@/lib/task-messages";
 import { BOT_NAME } from "@/lib/brand";
 
 const URL_RE = /(https?:\/\/[^\s<]+[^\s<.,:;"')\]])/g;
@@ -153,7 +154,7 @@ export function ChatView({ chat, messages, visible, globalHuman, connected, onBa
         <div className={styles.chatActions}>
           <span className={`${styles.aiBadge} ${chat.noKyc ? styles.aiBlocked : chat.paused || globalHuman ? styles.aiPaused : styles.aiActive}`}>{aiState}</span>
           {chat.client && <button className={styles.proofButton} onClick={() => setProofModal(true)} disabled={!connected} title="Screenshot + name/number admin ko bhejo (task submit)"><ImagePlus size={16} /><span>Task submit</span></button>}
-          {canComplete && <button className={styles.completeButton} onClick={() => setTaskModal(true)} disabled={!connected} title="Current task complete mark karo aur agla task bhejo"><CircleCheckBig size={16} /><span>Task {currentTaskIndex + 1} complete</span></button>}
+          {canComplete && <button className={styles.completeButton} onClick={() => setTaskModal(true)} disabled={!connected} title="Current task complete mark karo aur agla task bhejo"><CircleCheckBig size={16} /><span>{taskTitle(currentTaskIndex)} complete</span></button>}
           <button className={chat.paused ? styles.resumeButton : styles.pauseButton} disabled={aiBusy || !connected} onClick={async () => { setAiBusy(true); try { await onToggleAi(chat); } finally { setAiBusy(false); } }} title={chat.paused ? "Is user ko bot wapas de do (auto replies chalu)" : "Sirf is user ke liye bot band karo (Task 1 ke baad koi auto reply nahi)"}>
             {chat.paused ? <CirclePlay size={16} /> : <CirclePause size={16} />}<span>{chat.paused ? "Resume AI" : "Pause AI"}</span>
           </button>
@@ -230,12 +231,12 @@ function TaskModal({ chat, taskIndex, onClose, onConfirm }: { chat: Chat; taskIn
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const task = TASKS[taskIndex];
-  const nextText: ReactNode = NEXT_TEXT[taskIndex];
+  const nextText: ReactNode = nextTextFor(task.id, chat.client?.completed, chat.client?.skipped);
   return (
     <div className={styles.modalBackdrop} onClick={onClose}>
       <div className={styles.modal} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true">
-        <h3>Task {taskIndex + 1} ({task.name}) complete?</h3>
-        <p><b>{chat.name}</b> ka Task {taskIndex + 1} complete mark hoga{taskIndex < 2 ? ` aur user Task ${taskIndex + 2} par chala jayega` : " aur saare tasks done ho jayenge"}.</p>
+        <h3>{IS_AISHA ? `${task.name} complete?` : `Task ${taskIndex + 1} (${task.name}) complete?`}</h3>
+        <p><b>{chat.name}</b> ka {IS_AISHA ? `${task.name} task complete mark hoga` : `Task ${taskIndex + 1} complete mark hoga${taskIndex < 2 ? ` aur user Task ${taskIndex + 2} par chala jayega` : " aur saare tasks done ho jayenge"}`}.</p>
         <label className={styles.checkLine}><input type="checkbox" checked={sendNext} onChange={e => setSendNext(e.target.checked)} /> User ko bhejo: {nextText}</label>
         {err && <div className={styles.modalError}>{err}</div>}
         <div className={styles.modalActions}>
@@ -278,7 +279,7 @@ function ProofModal({ chat, defaultIndex, onClose, onSubmit }: { chat: Chat; def
   const fileRef = useRef<HTMLInputElement | null>(null);
   const task = TASKS[taskIndex];
   const alreadyDone = !!chat.client?.completed.includes(task.id);
-  const nextText = NEXT_TEXT[taskIndex];
+  const nextText = nextTextFor(task.id, chat.client?.completed, chat.client?.skipped);
 
   const pick = async (file?: File | null) => {
     if (!file) return;
@@ -304,7 +305,7 @@ function ProofModal({ chat, defaultIndex, onClose, onSubmit }: { chat: Chat; def
         <div className={styles.taskPicker}>
           {TASKS.map((t, i) => (
             <button key={t.id} type="button" className={i === taskIndex ? styles.taskPickActive : styles.taskPick} onClick={() => setTaskIndex(i)}>
-              Task {i + 1} · {t.name}{chat.client?.completed.includes(t.id) ? " ✓" : ""}
+              {IS_AISHA ? t.name : `Task ${i + 1} · ${t.name}`}{chat.client?.completed.includes(t.id) ? " ✓" : ""}
             </button>
           ))}
         </div>
@@ -316,9 +317,9 @@ function ProofModal({ chat, defaultIndex, onClose, onSubmit }: { chat: Chat; def
         <label className={styles.fieldLabel} htmlFor="proof-details">User ka name / number</label>
         <textarea id="proof-details" className={styles.fieldInput} rows={3} value={details} onChange={e => setDetails(e.target.value)} maxLength={600} />
         {alreadyDone
-          ? <p className={styles.fieldHint}>Task {taskIndex + 1} pehle se complete hai — sirf proof admin ko jayega.</p>
+          ? <p className={styles.fieldHint}>{taskTitle(taskIndex)} pehle se complete hai — sirf proof admin ko jayega.</p>
           : <>
-              <label className={styles.checkLine}><input type="checkbox" checked={markComplete} onChange={e => setMarkComplete(e.target.checked)} /> Task {taskIndex + 1} complete mark karo</label>
+              <label className={styles.checkLine}><input type="checkbox" checked={markComplete} onChange={e => setMarkComplete(e.target.checked)} /> {taskTitle(taskIndex)} complete mark karo</label>
               {markComplete && <label className={styles.checkLine}><input type="checkbox" checked={sendNext} onChange={e => setSendNext(e.target.checked)} /> User ko bhejo: {nextText}</label>}
             </>}
         {err && <div className={styles.modalError}>{err}</div>}

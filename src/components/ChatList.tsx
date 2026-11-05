@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Search, CirclePause, Ban, Check, CheckCheck, CalendarDays, ChevronLeft, ChevronRight, X, SlidersHorizontal } from "lucide-react";
 import styles from "@/app/dashboard.module.css";
+import { IS_AISHA } from "@/lib/brand";
 import { type Chat, avatarColor, dayKey, initials, listTime, preview } from "@/lib/ui";
 
 // Filters can be combined. Stage filters (Task 1/2/3, Done, New) are OR-ed with each other;
@@ -14,9 +15,9 @@ const STATUS_FILTERS = [
   { key: "paused", label: "AI paused" },
 ] as const;
 const STAGE_FILTERS = [
-  { key: "t1", label: "Task 1" },
-  { key: "t2", label: "Task 2" },
-  { key: "t3", label: "Task 3" },
+  ...(IS_AISHA
+    ? ([{ key: "t2", label: "Choice" }, { key: "t1", label: "HDFC SKY" }, { key: "t3", label: "Waiting" }] as const)
+    : ([{ key: "t1", label: "Task 1" }, { key: "t2", label: "Task 2" }, { key: "t3", label: "Task 3" }] as const)),
   { key: "done", label: "Done" },
   { key: "onboarding", label: "New" },
 ] as const;
@@ -85,7 +86,7 @@ export function ChatList({ chats, selectedId, onOpen, hidden, loading }: { chats
     if (keys.includes("unread") && c.unread === 0) return false;
     if (keys.includes("paused") && !c.paused) return false;
     if (keys.includes("qualified") && !c.qualified) return false;
-    if (keys.includes("tradeQualified") && !(c.client?.completed || []).includes("task_1_angel_one")) return false;
+    if (keys.includes("tradeQualified") && !(c.client?.completed || []).some(id => id === "task_1_angel_one" || (IS_AISHA && id === "task_2_choice_finx"))) return false;
     return true;
   };
 

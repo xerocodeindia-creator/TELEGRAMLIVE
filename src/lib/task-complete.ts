@@ -1,7 +1,8 @@
 // Marks a client's task complete (same state change + messages as the n8n workflow).
 // Used by the "Task complete" button and by the "Task submit" (screenshot proof) form.
 import { n8nConfig, findByColumn, upsertByClientId, sendTelegram, logAdminMessage, pauseAfterHumanReply, type Row } from "@/lib/n8n";
-import { TASK3_ON_HOLD, TASK_COMPLETION, TASK_IDS, type TaskId } from "@/lib/task-messages";
+import { IS_AISHA } from "@/lib/brand";
+import { TASK3_ON_HOLD, TASK_IDS, completionPlan, type TaskId } from "@/lib/task-messages";
 
 export async function findClient(clientId: string): Promise<Row | undefined> {
   return findByColumn(n8nConfig().tables.clients, "client_id", clientId);
@@ -9,6 +10,11 @@ export async function findClient(clientId: string): Promise<Row | undefined> {
 
 export function completedOf(row?: Row): string[] {
   try { const v = JSON.parse(String(row?.completed_tasks || "[]")); if (Array.isArray(v)) return v.map(String); } catch {}
+  return [];
+}
+
+function listOf(value: unknown): string[] {
+  try { const v = JSON.parse(String(value || "[]")); if (Array.isArray(v)) return v.map(String); } catch {}
   return [];
 }
 
@@ -24,9 +30,10 @@ export async function completeTask(clientId: string, taskId: TaskId, sendMessage
   const completed = completedOf(row);
   const index = TASK_IDS.indexOf(taskId);
   // Completing a later task also records the earlier ones, so the order stays consistent.
-  for (const id of TASK_IDS.slice(0, index + 1)) if (!completed.includes(id)) completed.push(id);
+  // Aisha's two tasks can be done in either order, so only this task is recorded.
+  for (const id of IS_AISHA ? [taskId] : TASK_IDS.slice(0, index + 1)) if (!completed.includes(id)) completed.push(id);
 
-  const plan = TASK_COMPLETION[taskId];
+  const plan = completionPlan(taskId, completed, listOf(row?.skipped_tasks));
   try {
     await upsertByClientId(cfg.tables.clients, clientId, {
       completed_tasks: JSON.stringify(completed),
