@@ -10,7 +10,9 @@ export const TASK1_LINK = IS_AISHA
 
 const GROUP_LINK = IS_AISHA ? "https://chat.whatsapp.com/IjHGPPvbDjhB2rWcQ3pDM1" : "https://chat.whatsapp.com/I1bRcqgxBZwJsWPbvaQg9O";
 
-export const WHATSAPP_GROUP = "Ok, brother apka yeh saare applications pending for approval stage main hain yeh saare applications approved hote hi ham apko apne taraf se message karke apka payment proceed karwa denge 🛡️\n\nAccount Active Hone me (48 hour) lagenge 📌\n\nTab tak aap ye Group Join Kar Lijiye, Saare Update Apko ishi me milenge✅\n\n📌 Join : 🔗 " + GROUP_LINK;
+export const WHATSAPP_GROUP = IS_AISHA
+  ? "Okay Brother! ❤️\n\nAapka 1st Task abhi Pending for Approval stage mein hai. Jaise hi task approve hota hai, hamari team aapko directly Telegram par message karke aapka payment process kar degi. 💸\n\n‼️ Important: Payment receive karne ke liye minimum 2 tasks complete karna compulsory hai. Sirf 1 task complete karne par koi payment nahi milega.\n\n📌 Account Active hone mein maximum 48 hours lag sakte hain.\n\nTab tak aap hamara Telegram Group join kar lijiye. Saare important updates aur further instructions aapko isi group mein milenge. ✅\n\n🔗 Join Group: " + GROUP_LINK
+  : "Ok, brother apka yeh saare applications pending for approval stage main hain yeh saare applications approved hote hi ham apko apne taraf se message karke apka payment proceed karwa denge 🛡️\n\nAccount Active Hone me (48 hour) lagenge 📌\n\nTab tak aap ye Group Join Kar Lijiye, Saare Update Apko ishi me milenge✅\n\n📌 Join : 🔗 " + GROUP_LINK;
 
 export const TASK2_LINK = IS_AISHA
   ? "📌2ND\n\n📝 Name: CHOICE ✅\n\n🔗 Link: https://formtraceker.vercel.app/r/choice-aisha\n\n✅ Link pe Click karke Account open krke screenshot dijiye. Koi problem aaye to screenshot bhej dena, mai guide kr dungi"
@@ -21,11 +23,8 @@ const HDFC_AS_SECOND = "📌2ND\n\n📝 Name: HDFC SKY ✅\n\n🔗 Link: https:/
 /** Aisha: Choice as a pasted reply, without a task number. */
 const CHOICE_PLAIN = "📌 Name: CHOICE ✅\n\n🔗 Link: https://formtraceker.vercel.app/r/choice-aisha\n\n✅ Link pe Click karke Account open krke screenshot dijiye. Koi problem aaye to screenshot bhej dena, mai guide kr dungi";
 
-/** Aisha: sent after the first of HDFC SKY / Choice, before the second link (no group link here). */
-const FIRST_DONE = "Apka 1st task complete ho gya hai ✅\n\nAb bas 2 task aur baaki hain. Teeno task complete karne par aapko ₹1,500 milenge 💰\n\nNeeche diya gaya 2nd task abhi complete kar lijiye 👇";
-
 export const TASK3_PRE = IS_AISHA
-  ? "Apka 2nd task complete ho gya hai ✅\n\n3rd task jald hi aapko yahin mil jayega 🙏 Tab tak WhatsApp group join karke rakhiye, updates wahin milenge.\n\n📌 Join : 🔗 " + GROUP_LINK
+  ? "Apka 2nd task complete ho gya hai ✅\n\n3rd task jald hi aapko yahin mil jayega 🙏 Tab tak WhatsApp group join karke rakhiye, updates wahin milenge."
   : "Apka 2nd task complete ho gya hai , mai apko 3rd task ka link deta hu wait";
 
 export const TASK3_LINK = "📌 TASK - 3\n📝 Name: BAJAJ ✅ \n\n\n🔗 Link: https://partners.marcadeo.com/click?oid=72&uid=823&aff_sub=533\n\n✅ Link pe Click karke Account open krke screenshot dijiye. Koi problem aaye to screenshot bhej dena, mai guide kr dungi";
@@ -63,8 +62,8 @@ export function completionPlan(taskId: TaskId, completed: string[] = [], skipped
   const other: TaskId = taskId === "task_1_angel_one" ? "task_2_choice_finx" : "task_1_angel_one";
   if (completed.includes(other) || skipped.includes(other)) return { next: WAIT_NEXT, stampColumn: fixed.stampColumn, messages: [TASK3_PRE] };
   return other === "task_2_choice_finx"
-    ? { next: { current_task: "task_2_choice_finx", flow_step: "task_2_active", next_task_allowed: true }, stampColumn: fixed.stampColumn, messages: [FIRST_DONE, TASK2_LINK] }
-    : { next: { current_task: "task_1_angel_one", flow_step: "task_1_active", next_task_allowed: true }, stampColumn: fixed.stampColumn, messages: [FIRST_DONE, HDFC_AS_SECOND] };
+    ? { next: { current_task: "task_2_choice_finx", flow_step: "task_2_active", next_task_allowed: true }, stampColumn: fixed.stampColumn, messages: [WHATSAPP_GROUP, TASK2_LINK] }
+    : { next: { current_task: "task_1_angel_one", flow_step: "task_1_active", next_task_allowed: true }, stampColumn: fixed.stampColumn, messages: [WHATSAPP_GROUP, HDFC_AS_SECOND] };
 }
 
 /** What the admin is told the user will receive when this task is completed. */
@@ -72,9 +71,9 @@ export function nextTextFor(taskId: TaskId, completed: string[] = [], skipped: s
   if (!IS_AISHA) return NEXT_TEXT[TASK_IDS.indexOf(taskId)];
   if (taskId === "task_3") return "Task 3 abhi band hai";
   const next = completionPlan(taskId, completed, skipped).next.current_task;
-  if (next === "task_1_angel_one") return "\"1st task complete\" message + HDFC SKY link";
-  if (next === "task_2_choice_finx") return "\"1st task complete\" message + Choice link";
-  return "\"2nd task complete, 3rd task jald\" message + WhatsApp group link";
+  if (next === "task_1_angel_one") return "WhatsApp group message + HDFC SKY link";
+  if (next === "task_2_choice_finx") return "WhatsApp group message + Choice link";
+  return "\"2nd task complete, 3rd task jald\" message (koi link nahi)";
 }
 
 /** Ready-made replies for the dashboard composer (useful in Human mode). */
