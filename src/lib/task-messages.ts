@@ -11,7 +11,7 @@ export const TASK1_LINK = IS_AISHA
 const GROUP_LINK = IS_AISHA ? "https://chat.whatsapp.com/IjHGPPvbDjhB2rWcQ3pDM1" : "https://chat.whatsapp.com/I1bRcqgxBZwJsWPbvaQg9O";
 
 export const WHATSAPP_GROUP = IS_AISHA
-  ? "Okay Brother! ❤️\n\nAapka 1st Task abhi Pending for Approval stage mein hai. Jaise hi task approve hota hai, hamari team aapko directly Telegram par message karke aapka payment process kar degi. 💸\n\n‼️ Important: Payment receive karne ke liye minimum 2 tasks complete karna compulsory hai. Sirf 1 task complete karne par koi payment nahi milega.\n\n📌 Account Active hone mein maximum 48 hours lag sakte hain.\n\nTab tak aap hamara Telegram Group join kar lijiye. Saare important updates aur further instructions aapko isi group mein milenge. ✅\n\n🔗 Join Group: " + GROUP_LINK
+  ? "Okay Brother! ❤️\n\nAapka 1st Task abhi Pending for Approval stage mein hai. Jaise hi task approve hota hai, hamari team aapko directly Telegram par message karke aapka payment process kar degi. 💸\n\n‼️ Important: Payment receive karne ke liye minimum 2 tasks complete karna compulsory hai. Sirf 1 task complete karne par koi payment nahi milega.\n\n📌 Account Active hone mein maximum 48 hours lag sakte hain.\n\nTab tak aap hamara WhatsApp Group join kar lijiye. Saare important updates aur further instructions aapko isi group mein milenge. ✅\n\n🔗 Join Group: " + GROUP_LINK
   : "Ok, brother apka yeh saare applications pending for approval stage main hain yeh saare applications approved hote hi ham apko apne taraf se message karke apka payment proceed karwa denge 🛡️\n\nAccount Active Hone me (48 hour) lagenge 📌\n\nTab tak aap ye Group Join Kar Lijiye, Saare Update Apko ishi me milenge✅\n\n📌 Join : 🔗 " + GROUP_LINK;
 
 export const TASK2_LINK = IS_AISHA
@@ -85,5 +85,5 @@ export const QUICK_REPLIES: { label: string; text: string }[] = [
   { label: "Group link", text: "WhatsApp group join kar lijiye, saare updates yahin milenge ✅\n🔗 " + GROUP_LINK },
   { label: "Screenshot bhejo", text: IS_AISHA ? "Account open hone ke baad final screen ka screenshot bhej dijiye 🙂\n\nHDFC SKY: \"We have received your details\" wala screen ya Home screen.\nChoice: Home screen jahan aapka naam aur \"Account Activation in Progress\" ya \"Account Setup ✅\" dikhe." : "Account open hone ke baad profile page ka screenshot bhej dijiye jahan aapka naam aur Client ID dikhe 🙂" },
   { label: "No deposit", text: "Paise add karne ki koi zarurat nahi hai 🙂 Bas account open karke screenshot bhej dijiye." },
-  { label: "Bonus info", text: "Aapka bonus hum khud dete hain 😊 Har completed task ka " + (IS_AISHA ? "₹500" : "₹100") + " milta hai. Minimum 3 tasks complete hone ke baad, applications approve hote hi hum khud message karke payment karwa denge." },
+  { label: "Bonus info", text: "Aapka bonus hum khud dete hain 😊 Har completed task ka " + (IS_AISHA ? "₹500" : "₹100") + " milta hai. Minimum " + (IS_AISHA ? "2" : "3") + " tasks complete hone ke baad, applications approve hote hi hum khud message karke payment karwa denge." },
 ].filter(q => !(IS_AISHA && (q.label === "Task 3 link" || q.label === "App login")));
