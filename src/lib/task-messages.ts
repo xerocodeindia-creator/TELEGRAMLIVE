@@ -11,7 +11,7 @@ export const TASK1_LINK = IS_AISHA
 const GROUP_LINK = IS_AISHA ? "https://chat.whatsapp.com/IjHGPPvbDjhB2rWcQ3pDM1" : "https://chat.whatsapp.com/I1bRcqgxBZwJsWPbvaQg9O";
 
 export const WHATSAPP_GROUP = IS_AISHA
-  ? "Okay Brother! ❤️\n\nAapka 1st Task abhi Pending for Approval stage mein hai. Jaise hi task approve hota hai, hamari team aapko directly Telegram par message karke aapka payment process kar degi. 💸\n\n‼️ Important: Payment receive karne ke liye minimum 2 tasks complete karna compulsory hai. Sirf 1 task complete karne par koi payment nahi milega.\n\n📌 Account Active hone mein maximum 48 hours lag sakte hain.\n\nTab tak aap hamara WhatsApp Group join kar lijiye. Saare important updates aur further instructions aapko isi group mein milenge. ✅\n\n🔗 Join Group: " + GROUP_LINK
+  ? "Okay Brother! ❤️\n\nAapka 1st Task abhi Pending for Approval stage mein hai. Jaise hi task approve hota hai, hamari team aapko directly Telegram par message karke aapka payment process kar degi. 💸\n\n‼️ Important: Payment receive karne ke liye minimum 2 tasks complete karna compulsory hai. Sirf 1 task complete karne par koi payment nahi milega.\n\n📌 Account Active hone mein maximum 48 hours lag sakte hain.\n\nTab tak aap hamara WhatsApp Group join kar lijiye. Saare important updates aur further instructions aapko isi group mein milenge. ✅\n\n🔗 Join Group: " + GROUP_LINK + "\n\n👇 Ab neeche diya gaya 2nd task complete kijiye"
   : "Ok, brother apka yeh saare applications pending for approval stage main hain yeh saare applications approved hote hi ham apko apne taraf se message karke apka payment proceed karwa denge 🛡️\n\nAccount Active Hone me (48 hour) lagenge 📌\n\nTab tak aap ye Group Join Kar Lijiye, Saare Update Apko ishi me milenge✅\n\n📌 Join : 🔗 " + GROUP_LINK;
 
 export const TASK2_LINK = IS_AISHA
@@ -19,7 +19,7 @@ export const TASK2_LINK = IS_AISHA
   : "📌 TASK - 2\n\n📝 Name: CHOICE FINX ✅\n\n🔗 Link: https://formlie.in/form/Y32qM1?r=Choice11Sana\n\n✅ Link pe click karke account open karke screenshot dijiye. Koi problem aaye to screenshot bhej dijiye, mai guide kar dunga.";
 
 /** Aisha: HDFC SKY as the second task, for users who did Choice first. */
-const HDFC_AS_SECOND = "📌2ND\n\n📝 Name: HDFC SKY ✅\n\n🔗 Link: https://uprisemedia.org/click?pub_id=22&camp_id=89\n\n✅ Link pe Click karke Account open krke screenshot dijiye. Koi problem aaye to screenshot bhej dena, mai guide kr dungi";
+const HDFC_AS_SECOND = "📌2ND\n\n📝 Name: HDFC SKY ✅\n\n🔗 Link: https://uprisemedia.org/click?pub_id=22&camp_id=89\n\n📋 PAN card, Aadhaar aur bank account ready rakhiye.\n💯 Account bilkul free hai — koi fees ya deposit nahi. (Bank verify karne ke liye sirf ₹1 ka UPI check ho sakta hai.)\n\n✅ Link pe Click karke Account open krke screenshot dijiye. Koi problem aaye to screenshot bhej dena, mai guide kr dungi";
 /** Aisha: Choice as a pasted reply, without a task number. */
 const CHOICE_PLAIN = "📌 Name: CHOICE ✅\n\n🔗 Link: https://formtraceker.vercel.app/r/choice-aisha\n\n✅ Link pe Click karke Account open krke screenshot dijiye. Koi problem aaye to screenshot bhej dena, mai guide kr dungi";
 
