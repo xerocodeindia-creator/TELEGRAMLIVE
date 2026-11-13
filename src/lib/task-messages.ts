@@ -24,15 +24,17 @@ const HDFC_AS_SECOND = "📌2ND\n\n📝 Name: HDFC SKY ✅\n\n🔗 Link: https:/
 const CHOICE_PLAIN = "📌 Name: CHOICE ✅\n\n🔗 Link: https://formtraceker.vercel.app/r/choice-aisha\n\n✅ Link pe Click karke Account open krke screenshot dijiye. Koi problem aaye to screenshot bhej dena, mai guide kr dungi";
 
 export const TASK3_PRE = IS_AISHA
-  ? "Apka 2nd task complete ho gya hai ✅\n\n3rd task jald hi aapko yahin mil jayega 🙏 Tab tak WhatsApp group join karke rakhiye, updates wahin milenge."
+  ? "Apka 2nd task complete ho gya hai ✅\n\nAb aapka 3rd task 👇\n\n📌 TASK - 3 \n\nReward - 500₹\n\n📝 Name: BAJAJ BROKING ✅\n\n🔗 Link: https://ft.hatsconsulting.me/form?id=844&ref=DHRUV\n\n\n✅ Link pe click karke account open karke screenshot dijiye. Koi problem aaye to screenshot bhej dijiye, mai guide kar dungi."
   : "Apka 2nd task complete ho gya hai , mai apko 3rd task ka link deta hu wait";
 
-export const TASK3_LINK = "📌 TASK - 3\n📝 Name: BAJAJ ✅ \n\n\n🔗 Link: https://partners.marcadeo.com/click?oid=72&uid=823&aff_sub=533\n\n✅ Link pe Click karke Account open krke screenshot dijiye. Koi problem aaye to screenshot bhej dena, mai guide kr dungi";
+export const TASK3_LINK = IS_AISHA
+  ? "📌 TASK - 3 \n\nReward - 500₹\n\n📝 Name: BAJAJ BROKING ✅\n\n🔗 Link: https://ft.hatsconsulting.me/form?id=844&ref=DHRUV\n\n\n✅ Link pe click karke account open karke screenshot dijiye. Koi problem aaye to screenshot bhej dijiye, mai guide kar dungi."
+  : "📌 TASK - 3\n📝 Name: BAJAJ ✅ \n\n\n🔗 Link: https://partners.marcadeo.com/click?oid=72&uid=823&aff_sub=533\n\n✅ Link pe Click karke Account open krke screenshot dijiye. Koi problem aaye to screenshot bhej dena, mai guide kr dungi";
 
 export const BAJAJ_DONE = "✅ Bajaj task complete ho gaya hai!\n\n📩 Aage ke updates WhatsApp group par milenge. Group join karke rakhein.\n\nNote: Account activation aur payment ka final status provider/admin ke update par depend karega.";
 
-/** Aisha has no Task 3 yet: the dashboard must not send it or mark it complete. */
-export const TASK3_ON_HOLD = IS_AISHA;
+/** Task 3 (Bajaj) is live for both bots (Aisha since 14 Nov 2026). */
+export const TASK3_ON_HOLD = false;
 
 /** What the Aarohi admin is told the user will receive when a task is completed (by task order). */
 const NEXT_TEXT: string[] = ["WhatsApp group message + Task 2 (Choice FinX) link", "\"2nd task complete\" message + Task 3 (Bajaj) link", "Bajaj completion message"];
@@ -69,11 +71,11 @@ export function completionPlan(taskId: TaskId, completed: string[] = [], skipped
 /** What the admin is told the user will receive when this task is completed. */
 export function nextTextFor(taskId: TaskId, completed: string[] = [], skipped: string[] = []): string {
   if (!IS_AISHA) return NEXT_TEXT[TASK_IDS.indexOf(taskId)];
-  if (taskId === "task_3") return "Task 3 abhi band hai";
+  if (taskId === "task_3") return "Bajaj completion message";
   const next = completionPlan(taskId, completed, skipped).next.current_task;
   if (next === "task_1_angel_one") return "WhatsApp group message + HDFC SKY link";
   if (next === "task_2_choice_finx") return "WhatsApp group message + Choice link";
-  return "\"2nd task complete, 3rd task jald\" message (koi link nahi)";
+  return "\"2nd task complete\" + Bajaj Task 3 link";
 }
 
 /** Ready-made replies for the dashboard composer (useful in Human mode). */

@@ -61,7 +61,7 @@ export const TASKS = IS_AISHA
   ? ([
       { id: "task_2_choice_finx", name: "Choice", short: "T2" },
       { id: "task_1_angel_one", name: "HDFC SKY", short: "T1" },
-      { id: "task_3", name: "Waiting", short: "T3" },
+      { id: "task_3", name: "Bajaj", short: "T3" },
     ] as const)
   : ([
       { id: "task_1_angel_one", name: "Angel One", short: "T1" },
@@ -78,7 +78,7 @@ export function stageOf(c?: ClientRow): Stage {
   if (!c) return { key: "onboarding", short: "New", label: "Onboarding", index: -1 };
   const done = c.completed || [];
   if (c.currentTask === "completed" || c.flowStep === "all_tasks_completed" || done.includes("task_3")) return { key: "done", short: "Done", label: "All tasks done", index: 3 };
-  if (c.currentTask === "task_3" || /^task_3/.test(c.flowStep)) return { key: "t3", short: IS_AISHA ? "Wait" : "T3", label: stageLabel(taskPos("task_3")), index: taskPos("task_3") };
+  if (c.currentTask === "task_3" || /^task_3/.test(c.flowStep)) return { key: "t3", short: IS_AISHA ? "Bajaj" : "T3", label: stageLabel(taskPos("task_3")), index: taskPos("task_3") };
   if (c.currentTask === "task_2_choice_finx" || /^task_2/.test(c.flowStep)) return { key: "t2", short: IS_AISHA ? "Choice" : "T2", label: stageLabel(taskPos("task_2_choice_finx")), index: taskPos("task_2_choice_finx") };
   if (c.currentTask === "task_1_angel_one" || /^task_1/.test(c.flowStep)) return { key: "t1", short: IS_AISHA ? "HDFC" : "T1", label: stageLabel(taskPos("task_1_angel_one")), index: taskPos("task_1_angel_one") };
   return { key: "onboarding", short: "New", label: "Onboarding", index: -1 };

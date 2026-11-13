@@ -16,7 +16,7 @@ const STATUS_FILTERS = [
 ] as const;
 const STAGE_FILTERS = [
   ...(IS_AISHA
-    ? ([{ key: "t2", label: "Choice" }, { key: "t1", label: "HDFC SKY" }, { key: "t3", label: "Waiting" }] as const)
+    ? ([{ key: "t2", label: "Choice" }, { key: "t1", label: "HDFC SKY" }, { key: "t3", label: "Bajaj" }] as const)
     : ([{ key: "t1", label: "Task 1" }, { key: "t2", label: "Task 2" }, { key: "t3", label: "Task 3" }] as const)),
   { key: "done", label: "Done" },
   { key: "onboarding", label: "New" },
