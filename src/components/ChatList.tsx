@@ -35,12 +35,6 @@ function shortDay(key: string) {
 function daysBetween(a: string, b: string) {
   return Math.round((Date.parse(b + "T12:00:00Z") - Date.parse(a + "T12:00:00Z")) / 86400000);
 }
-const monthStartKey = () => todayKey().slice(0, 8) + "01";
-// Aisha: the IST day a user became Trade Qualified (first Choice or HDFC SKY account approved). "" = not qualified.
-function tradeQualifiedDay(c: Chat) {
-  const ts = [c.client?.t1, c.client?.t2].map(v => (v ? Date.parse(v) : NaN)).filter(n => !Number.isNaN(n));
-  return ts.length ? dayKey(Math.min(...ts)) : "";
-}
 function dateTitle(key: string) {
   if (!key) return "All dates";
   if (key === todayKey()) return "Today";
@@ -79,28 +73,12 @@ export function ChatList({ chats, selectedId, onOpen, hidden, loading }: { chats
   // On phones the chips are folded behind a "Filters" button so the chat list gets the screen.
   const [showChips, setShowChips] = useState(false);
 
-  // Aisha: Trade Qualified opens on this month and the date range then means "qualified on these days"
-  // (not "had a message on these days"). Turning it off goes back to today. Aarohi is unchanged.
-  const tqMode = IS_AISHA && active.includes("tradeQualified");
-  const toggle = (key: FilterKey) => {
-    if (IS_AISHA && key === "tradeQualified") {
-      if (active.includes(key)) setRange(todayKey(), todayKey());
-      else setRange(monthStartKey(), todayKey());
-    }
-    setActive(prev => (prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]));
-  };
+  const toggle = (key: FilterKey) => setActive(prev => (prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]));
 
   const inDate = useMemo(() => {
     if (allDates) return chats;
-    if (tqMode) return chats.filter(c => { const d = tradeQualifiedDay(c); return !!d && d >= from && d <= to; });
     return chats.filter(c => { for (const d of c.days) if (d >= from && d <= to) return true; return false; });
-  }, [chats, from, to, allDates, tqMode]);
-  // Count on the Trade Qualified chip before it is clicked = this month's trade-qualified users (what the click will show).
-  const tqMonth = useMemo(() => {
-    if (!IS_AISHA) return [];
-    const f = monthStartKey(), t = todayKey();
-    return chats.filter(c => { const d = tradeQualifiedDay(c); return !!d && d >= f && d <= t; });
-  }, [chats]);
+  }, [chats, from, to, allDates]);
 
   const matches = (c: Chat, keys: FilterKey[]) => {
     const stages = keys.filter(k => STAGE_FILTERS.some(f => f.key === k));
@@ -125,8 +103,7 @@ export function ChatList({ chats, selectedId, onOpen, hidden, loading }: { chats
   const countFor = (key: FilterKey) => {
     const isStage = STAGE_FILTERS.some(f => f.key === key);
     const keys = isStage ? [...active.filter(k => !STAGE_FILTERS.some(f => f.key === k)), key] : Array.from(new Set([...active, key]));
-    const base = IS_AISHA && key === "tradeQualified" && !tqMode ? tqMonth : inDate;
-    return base.filter(c => matches(c, keys)).length;
+    return inDate.filter(c => matches(c, keys)).length;
   };
 
   const chip = (f: { key: FilterKey; label: string }) => {
@@ -150,7 +127,7 @@ export function ChatList({ chats, selectedId, onOpen, hidden, loading }: { chats
             <span>{rangeTitle}</span>
           </button>
           <button className={styles.dayStep} onClick={() => shiftRange(1)} disabled={allDates || to >= todayKey()} aria-label="Next period"><ChevronRight size={16} /></button>
-          <span className={styles.dateCount}>{tqMode ? `${list.length} trade qualified` : `${inDate.length} chats`}</span>
+          <span className={styles.dateCount}>{inDate.length} chats</span>
           <button className={active.length || showChips ? styles.filterToggleOn : styles.filterToggle} onClick={() => setShowChips(v => !v)} aria-expanded={showChips}>
             <SlidersHorizontal size={14} />{active.length ? active.length : ""}
           </button>
@@ -180,7 +157,7 @@ export function ChatList({ chats, selectedId, onOpen, hidden, loading }: { chats
           {STATUS_FILTERS.map(chip)}
           <span className={styles.filterDivider} />
           {STAGE_FILTERS.map(chip)}
-          {active.length > 0 && <button className={styles.clearChip} onClick={() => { if (tqMode) setRange(todayKey(), todayKey()); setActive([]); }}><X size={12} />Clear</button>}
+          {active.length > 0 && <button className={styles.clearChip} onClick={() => setActive([])}><X size={12} />Clear</button>}
         </div>
       </div>
       <div className={styles.chatRows}>
