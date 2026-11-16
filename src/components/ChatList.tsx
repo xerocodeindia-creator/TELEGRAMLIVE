@@ -35,6 +35,12 @@ function shortDay(key: string) {
 function daysBetween(a: string, b: string) {
   return Math.round((Date.parse(b + "T12:00:00Z") - Date.parse(a + "T12:00:00Z")) / 86400000);
 }
+const monthStartKey = () => todayKey().slice(0, 8) + "01";
+// Aisha: the IST day a user became Trade Qualified (first Choice or HDFC SKY account approved). "" = not qualified.
+function tradeQualifiedDay(c: Chat) {
+  const ts = [c.client?.t1, c.client?.t2].map(v => (v ? Date.parse(v) : NaN)).filter(n => !Number.isNaN(n));
+  return ts.length ? dayKey(Math.min(...ts)) : "";
+}
 function dateTitle(key: string) {
   if (!key) return "All dates";
   if (key === todayKey()) return "Today";
@@ -75,10 +81,19 @@ export function ChatList({ chats, selectedId, onOpen, hidden, loading }: { chats
 
   const toggle = (key: FilterKey) => setActive(prev => (prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]));
 
+  // Aisha: while Trade Qualified is on, the list is everyone who became trade qualified THIS MONTH
+  // (1st of the month → today, IST), whatever the date bar says. The date bar itself is not changed. Aarohi is unchanged.
+  const tqMode = IS_AISHA && active.includes("tradeQualified");
+  const tqMonth = useMemo(() => {
+    if (!IS_AISHA) return [];
+    const f = monthStartKey(), t = todayKey();
+    return chats.filter(c => { const d = tradeQualifiedDay(c); return !!d && d >= f && d <= t; });
+  }, [chats]);
   const inDate = useMemo(() => {
+    if (tqMode) return tqMonth;
     if (allDates) return chats;
     return chats.filter(c => { for (const d of c.days) if (d >= from && d <= to) return true; return false; });
-  }, [chats, from, to, allDates]);
+  }, [chats, from, to, allDates, tqMode, tqMonth]);
 
   const matches = (c: Chat, keys: FilterKey[]) => {
     const stages = keys.filter(k => STAGE_FILTERS.some(f => f.key === k));
@@ -103,7 +118,8 @@ export function ChatList({ chats, selectedId, onOpen, hidden, loading }: { chats
   const countFor = (key: FilterKey) => {
     const isStage = STAGE_FILTERS.some(f => f.key === key);
     const keys = isStage ? [...active.filter(k => !STAGE_FILTERS.some(f => f.key === k)), key] : Array.from(new Set([...active, key]));
-    return inDate.filter(c => matches(c, keys)).length;
+    const base = IS_AISHA && key === "tradeQualified" ? tqMonth : inDate;
+    return base.filter(c => matches(c, keys)).length;
   };
 
   const chip = (f: { key: FilterKey; label: string }) => {
@@ -127,7 +143,7 @@ export function ChatList({ chats, selectedId, onOpen, hidden, loading }: { chats
             <span>{rangeTitle}</span>
           </button>
           <button className={styles.dayStep} onClick={() => shiftRange(1)} disabled={allDates || to >= todayKey()} aria-label="Next period"><ChevronRight size={16} /></button>
-          <span className={styles.dateCount}>{inDate.length} chats</span>
+          <span className={styles.dateCount}>{tqMode ? `${list.length} TQ · is mahine` : `${inDate.length} chats`}</span>
           <button className={active.length || showChips ? styles.filterToggleOn : styles.filterToggle} onClick={() => setShowChips(v => !v)} aria-expanded={showChips}>
             <SlidersHorizontal size={14} />{active.length ? active.length : ""}
           </button>
