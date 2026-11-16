@@ -53,39 +53,64 @@ export const TASK_COMPLETION: Record<TaskId, { next: { current_task: string; flo
 
 type Plan = (typeof TASK_COMPLETION)[TaskId];
 const WAIT_NEXT = { current_task: "task_3", flow_step: "task_3_waiting", next_task_allowed: false };
+const DONE_NEXT = { current_task: "completed", flow_step: "all_tasks_completed", next_task_allowed: false };
+const HDFC_NEXT = { current_task: "task_1_angel_one", flow_step: "task_1_active", next_task_allowed: true };
+const CHOICE_NEXT = { current_task: "task_2_choice_finx", flow_step: "task_2_active", next_task_allowed: true };
+const END_LINE = "\n\n✅ Link pe Click karke Account open krke screenshot dijiye. Koi problem aaye to screenshot bhej dena, mai guide kr dungi";
+const hdfcTask = (label: string) => "📌" + label + "\n\n📝 Name: HDFC SKY ✅\n\n🔗 Link: https://uprisemedia.org/click?pub_id=22&camp_id=89" + END_LINE;
+const choiceTask = (label: string) => "📌" + label + "\n\n📝 Name: CHOICE ✅\n\n🔗 Link: https://formtraceker.vercel.app/r/choice-aisha" + END_LINE;
+/** Aisha: sent when the last open task is done (same text as the workflow's "Send All Done After HDFC/Choice"). */
+const ALL_DONE = "✅ Aapke saare tasks complete ho gaye hain! 🎉\n\n📩 Aage ke updates WhatsApp group par milenge. Group join karke rakhein.\n\nNote: Account activation aur payment ka final status provider/admin ke update par depend karega.";
 
 /**
- * What completing this task does. Aarohi has a fixed order. Aisha's users do HDFC SKY and Choice in
- * either order (new users: Choice first), so the next step depends on what is already done or skipped.
+ * What completing this task does. Aarohi has a fixed order. Aisha mirrors the workflow (16 Nov 2026):
+ * new users do Bajaj → HDFC SKY → Choice, earlier users Choice → HDFC SKY → Bajaj, so the next step depends
+ * on what is already done or skipped. The WhatsApp group message goes only after the user's first task.
  */
 export function completionPlan(taskId: TaskId, completed: string[] = [], skipped: string[] = []): Plan {
   const fixed = TASK_COMPLETION[taskId];
-  if (!IS_AISHA || taskId === "task_3") return fixed;
-  const other: TaskId = taskId === "task_1_angel_one" ? "task_2_choice_finx" : "task_1_angel_one";
-  if (completed.includes(other) || skipped.includes(other)) return { next: WAIT_NEXT, stampColumn: fixed.stampColumn, messages: [TASK3_PRE] };
-  return other === "task_2_choice_finx"
-    ? { next: { current_task: "task_2_choice_finx", flow_step: "task_2_active", next_task_allowed: true }, stampColumn: fixed.stampColumn, messages: [WHATSAPP_GROUP, TASK2_LINK] }
-    : { next: { current_task: "task_1_angel_one", flow_step: "task_1_active", next_task_allowed: true }, stampColumn: fixed.stampColumn, messages: [WHATSAPP_GROUP, HDFC_AS_SECOND] };
+  if (!IS_AISHA) return fixed;
+  const done = [...completed.filter(t => t !== taskId), taskId];
+  const isFirst = done.length === 1;
+  const open = (id: string) => !done.includes(id) && !skipped.includes(id);
+  const label = ["1ST", "2ND", "3RD"][Math.min(done.length, 2)];
+  const stampColumn = fixed.stampColumn;
+  const withGroup = (m: string) => (isFirst ? [WHATSAPP_GROUP, m] : [m]);
+  if (taskId === "task_3") {
+    if (open("task_1_angel_one")) return { next: HDFC_NEXT, stampColumn, messages: withGroup(hdfcTask(label)) };
+    if (open("task_2_choice_finx")) return { next: CHOICE_NEXT, stampColumn, messages: withGroup(choiceTask(label)) };
+    return { next: DONE_NEXT, stampColumn, messages: [BAJAJ_DONE] };
+  }
+  if (taskId === "task_1_angel_one") {
+    if (open("task_2_choice_finx")) return { next: CHOICE_NEXT, stampColumn, messages: withGroup(isFirst ? TASK2_LINK : choiceTask(label)) };
+    if (open("task_3")) return { next: WAIT_NEXT, stampColumn, messages: [TASK3_PRE] };
+    return { next: DONE_NEXT, stampColumn, messages: [ALL_DONE] };
+  }
+  if (open("task_1_angel_one")) return { next: HDFC_NEXT, stampColumn, messages: [WHATSAPP_GROUP, HDFC_AS_SECOND] };
+  if (open("task_3")) return { next: WAIT_NEXT, stampColumn, messages: [TASK3_PRE] };
+  return { next: DONE_NEXT, stampColumn, messages: [ALL_DONE] };
 }
 
 /** What the admin is told the user will receive when this task is completed. */
 export function nextTextFor(taskId: TaskId, completed: string[] = [], skipped: string[] = []): string {
   if (!IS_AISHA) return NEXT_TEXT[TASK_IDS.indexOf(taskId)];
-  if (taskId === "task_3") return "Bajaj completion message";
-  const next = completionPlan(taskId, completed, skipped).next.current_task;
-  if (next === "task_1_angel_one") return "WhatsApp group message + HDFC SKY link";
-  if (next === "task_2_choice_finx") return "WhatsApp group message + Choice link";
-  return "\"2nd task complete\" + Bajaj Task 3 link";
+  const plan = completionPlan(taskId, completed, skipped);
+  const group = plan.messages.includes(WHATSAPP_GROUP) ? "WhatsApp group message + " : "";
+  const next = plan.next.current_task;
+  if (next === "task_1_angel_one") return group + "HDFC SKY link";
+  if (next === "task_2_choice_finx") return group + "Choice link";
+  if (next === "task_3") return "\"2nd task complete\" + Bajaj Task 3 link";
+  return taskId === "task_3" ? "Bajaj completion message" : "All tasks complete message";
 }
 
 /** Ready-made replies for the dashboard composer (useful in Human mode). */
 export const QUICK_REPLIES: { label: string; text: string }[] = [
   { label: IS_AISHA ? "HDFC SKY link" : "Task 1 link", text: TASK1_LINK },
   { label: IS_AISHA ? "Choice link" : "Task 2 link", text: IS_AISHA ? CHOICE_PLAIN : TASK2_LINK },
-  { label: "Task 3 link", text: TASK3_LINK },
+  { label: IS_AISHA ? "Bajaj link" : "Task 3 link", text: IS_AISHA ? "📌 Name: BAJAJ BROKING ✅\n\n🔗 Link: https://ft.hatsconsulting.me/form?id=844&ref=DHRUV" + END_LINE : TASK3_LINK },
   { label: "App login", text: "Play Store se Angel One app download karke uske Home Page ka screenshot bhej dijiye.\n\n📲 Play Store Link: https://play.google.com/store/apps/details?id=com.msf.angelmobile&hl=en" },
   { label: "Group link", text: "WhatsApp group join kar lijiye, saare updates yahin milenge ✅\n🔗 " + GROUP_LINK },
   { label: "Screenshot bhejo", text: IS_AISHA ? "Account open hone ke baad final screen ka screenshot bhej dijiye 🙂\n\nHDFC SKY: \"We have received your details\" wala screen ya Home screen.\nChoice: Home screen jahan aapka naam aur \"Account Activation in Progress\" ya \"Account Setup ✅\" dikhe." : "Account open hone ke baad profile page ka screenshot bhej dijiye jahan aapka naam aur Client ID dikhe 🙂" },
   { label: "No deposit", text: "Paise add karne ki koi zarurat nahi hai 🙂 Bas account open karke screenshot bhej dijiye." },
   { label: "Bonus info", text: "Aapka bonus hum khud dete hain 😊 Har completed task ka " + (IS_AISHA ? "₹500" : "₹100") + " milta hai. Minimum " + (IS_AISHA ? "2" : "3") + " tasks complete hone ke baad, applications approve hote hi hum khud message karke payment karwa denge." },
-].filter(q => !(IS_AISHA && (q.label === "Task 3 link" || q.label === "App login")));
+].filter(q => !(IS_AISHA && q.label === "App login"));
