@@ -27,6 +27,8 @@ export type ClientRow = {
   completed: string[];
   /** Aisha: tasks skipped because the user already had that account. */
   skipped?: string[];
+  /** Aisha: bonus campaign stage ("step1" / "step2"); "" = not in the campaign. */
+  bonus?: string;
   updatedAt: string;
   t1: string;
   t2: string;

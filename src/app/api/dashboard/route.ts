@@ -24,6 +24,7 @@ function mapClient(r: Row) {
     proofStatus: String(r.proof_status || ""),
     completed,
     skipped,
+    bonus: r.bonus_status ? String(r.bonus_status) : "",
     updatedAt: r.updatedAt ? String(r.updatedAt) : "",
     t1: r.task_1_completed_at ? String(r.task_1_completed_at) : "",
     t2: r.task_2_completed_at ? String(r.task_2_completed_at) : "",

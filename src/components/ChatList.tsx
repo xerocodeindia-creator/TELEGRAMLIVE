@@ -87,7 +87,8 @@ export function ChatList({ chats, selectedId, onOpen, hidden, loading }: { chats
   const tqMonth = useMemo(() => {
     if (!IS_AISHA) return [];
     const f = monthStartKey(), t = todayKey();
-    return chats.filter(c => { const d = tradeQualifiedDay(c); return !!d && d >= f && d <= t; });
+    // Bonus campaign users always count as Trade Qualified, whatever their task dates.
+    return chats.filter(c => { if (c.client?.bonus) return true; const d = tradeQualifiedDay(c); return !!d && d >= f && d <= t; });
   }, [chats]);
   const inDate = useMemo(() => {
     if (tqMode) return tqMonth;
@@ -101,7 +102,7 @@ export function ChatList({ chats, selectedId, onOpen, hidden, loading }: { chats
     if (keys.includes("unread") && c.unread === 0) return false;
     if (keys.includes("paused") && !c.paused) return false;
     if (keys.includes("qualified") && !c.qualified) return false;
-    if (keys.includes("tradeQualified") && !(c.client?.completed || []).some(id => id === "task_1_angel_one" || (IS_AISHA && id === "task_2_choice_finx"))) return false;
+    if (keys.includes("tradeQualified") && !(IS_AISHA && c.client?.bonus) && !(c.client?.completed || []).some(id => id === "task_1_angel_one" || (IS_AISHA && id === "task_2_choice_finx"))) return false;
     return true;
   };
 
