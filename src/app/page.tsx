@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bot, LogOut, Moon, Sun, Hand, MessageCircle, LayoutGrid, WifiOff } from "lucide-react";
 import styles from "./dashboard.module.css";
 import { ChatList } from "@/components/ChatList";
-import { ChatView, type ProofInput } from "@/components/ChatView";
+import { ChatView, type ProofInput, type PhotoInput } from "@/components/ChatView";
 import { Pipeline } from "@/components/Pipeline";
 import { type Chat, type ClientRow, type Controls, type Msg, ms, msgCmp, dayKey, stageOf } from "@/lib/ui";
 import { BOT_NAME, IS_AISHA } from "@/lib/brand";
@@ -235,6 +235,15 @@ export default function DashboardPage() {
     completeTask(chat, proof.taskId, proof.sendMessages).catch(e => showToast(`Admin ko bhej diya, par task update nahi hua: ${e instanceof Error ? e.message : "error"}`));
   }
 
+  async function sendPhoto(chat: Chat, photo: PhotoInput) {
+    const r = await fetch("/api/send-photo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chatId: chat.id, ...photo }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error([d.error, d.detail].filter(Boolean).join(": ") || "Photo nahi gayi");
+    if (d.aiPausedNow) setControls(c => ({ ...c, users: { ...c.users, [chat.id]: { paused: true, noKyc: false, humanReply: true } } }));
+    showToast(d.logged ? "Photo bhej di ✓" : "Photo bhej di, par history mein save nahi hui (n8n API).");
+    window.setTimeout(poll, 400);
+  }
+
   async function logout() { await fetch("/api/auth", { method: "DELETE" }); location.replace("/login"); }
 
   function openChat(id: string) { setSelectedId(id); setMobileChatOpen(true); setView("chats"); }
@@ -276,6 +285,7 @@ export default function DashboardPage() {
             onToggleAi={toggleUser}
             onCompleteTask={completeTask}
             onSubmitProof={submitProof}
+            onSendPhoto={IS_AISHA ? sendPhoto : undefined}
             connected={Boolean(connected)}
           />
         </div>

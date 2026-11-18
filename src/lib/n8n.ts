@@ -118,6 +118,42 @@ export async function sendTelegram(chatId: string, text: string) {
   return data.result || {};
 }
 
+/** Aisha: sends a photo (base64) with an optional caption to one user through the n8n proxy. */
+export async function sendTelegramPhoto(chatId: string, imageBase64: string, mimeType: string, caption: string) {
+  const { baseUrl, proxySecret } = n8nConfig();
+  if (!baseUrl || !proxySecret) throw new Error("Telegram photo proxy is not configured on the server.");
+  const response = await fetch(`${baseUrl}/webhook/telegram-user-photo-${proxySecret}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ chatId, imageBase64, mimeType, caption }),
+    cache: "no-store",
+  });
+  const data: any = await response.json().catch(() => ({}));
+  if (!response.ok || !data.ok) throw new Error(data.description || data.message || `Photo send failed (n8n proxy HTTP ${response.status})`);
+  return data.result || {};
+}
+
+/** Saves an admin-sent photo to conversation_messages so it shows in the dashboard history. */
+export async function logAdminPhoto(chatId: string, caption: string, fileId: string, telegramMessageId: string) {
+  const { tables } = n8nConfig();
+  return insertRows(tables.messages, [{
+    event_key: `admin_${chatId}_${telegramMessageId || Date.now()}`,
+    chat_id: chatId,
+    user_id: chatId,
+    first_name: "Admin",
+    direction: "outbound",
+    message_type: "photo",
+    text: caption,
+    caption,
+    file_id: fileId,
+    telegram_message_id: telegramMessageId,
+    event_time: new Date().toISOString(),
+    send_status: "manual_admin",
+    task_id: "",
+    ai_analysis: "",
+  }]);
+}
+
 /** Saves an admin-sent message to conversation_messages so it shows in the dashboard history. */
 export async function logAdminMessage(chatId: string, text: string, telegramMessageId: string, sendStatus = "manual_admin", taskId = "") {
   const { tables } = n8nConfig();

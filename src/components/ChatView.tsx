@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ArrowLeft, Bot, Check, CheckCheck, CirclePause, CirclePlay, Clock3, AlertCircle, Send, ChevronDown, X, Zap, ImageOff, MessageCircle, CircleCheckBig, Phone, Hash, ImagePlus } from "lucide-react";
+import { ArrowLeft, Bot, Check, CheckCheck, CirclePause, CirclePlay, Clock3, AlertCircle, Send, ChevronDown, X, Zap, ImageOff, MessageCircle, CircleCheckBig, Phone, Hash, ImagePlus, Paperclip } from "lucide-react";
 import styles from "@/app/dashboard.module.css";
 import { type Chat, type Msg, TASKS, taskTitle, avatarColor, dayKey, dayLabel, fullDate, initials, isMedia, ms, timeOf } from "@/lib/ui";
 import { IS_AISHA } from "@/lib/brand";
@@ -32,16 +32,21 @@ type Props = {
   onToggleAi: (chat: Chat) => Promise<void>;
   onCompleteTask: (chat: Chat, taskId: string, sendMessages: boolean) => Promise<void>;
   onSubmitProof: (chat: Chat, proof: ProofInput) => Promise<void>;
+  /** Aisha only: send a photo (+ caption) to the user. */
+  onSendPhoto?: (chat: Chat, photo: PhotoInput) => Promise<void>;
 };
+
+export type PhotoInput = { imageBase64: string; mimeType: string; caption: string };
 
 export type ProofInput = { taskId: string; details: string; imageBase64: string; mimeType: string; markComplete: boolean; sendMessages: boolean };
 
-export function ChatView({ chat, messages, visible, globalHuman, connected, onBack, onSend, onToggleAi, onCompleteTask, onSubmitProof }: Props) {
+export function ChatView({ chat, messages, visible, globalHuman, connected, onBack, onSend, onToggleAi, onCompleteTask, onSubmitProof, onSendPhoto }: Props) {
   const [draft, setDraft] = useState("");
   const [lightbox, setLightbox] = useState("");
   const [showQuick, setShowQuick] = useState(false);
   const [taskModal, setTaskModal] = useState(false);
   const [proofModal, setProofModal] = useState(false);
+  const [photoModal, setPhotoModal] = useState(false);
   const [aiBusy, setAiBusy] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const atBottom = useRef(true);
@@ -215,12 +220,14 @@ export function ChatView({ chat, messages, visible, globalHuman, connected, onBa
             title="Enter = send, Shift+Enter = new line"
             rows={1}
           />
+          {IS_AISHA && onSendPhoto && <button className={styles.quickToggle} onClick={() => setPhotoModal(true)} disabled={!connected} title="User ko photo bhejo" aria-label="Photo bhejo"><Paperclip size={18} /></button>}
           <button className={styles.sendButton} onClick={send} disabled={!draft.trim() || !connected} aria-label="Send"><Send size={18} /></button>
         </div>
       </footer>
 
       {lightbox && <div className={styles.lightbox} onClick={() => setLightbox("")}><button aria-label="Close"><X size={22} /></button><img src={lightbox} alt="Screenshot full size" onClick={e => e.stopPropagation()} /></div>}
       {proofModal && chat.client && <ProofModal chat={chat} defaultIndex={canComplete ? currentTaskIndex : 2} onClose={() => setProofModal(false)} onSubmit={onSubmitProof} />}
+      {photoModal && onSendPhoto && <PhotoModal chat={chat} initialCaption={draft} onClose={() => setPhotoModal(false)} onSend={async p => { await onSendPhoto(chat, p); if (p.caption && p.caption === draft.trim()) { setDraft(""); drafts.current[chat.id] = ""; } }} />}
       {taskModal && canComplete && <TaskModal chat={chat} taskIndex={currentTaskIndex} onClose={() => setTaskModal(false)} onConfirm={onCompleteTask} />}
     </section>
   );
@@ -326,6 +333,46 @@ function ProofModal({ chat, defaultIndex, onClose, onSubmit }: { chat: Chat; def
         <div className={styles.modalActions}>
           <button className={styles.ghostButton} onClick={onClose} disabled={busy}>Cancel</button>
           <button className={styles.primaryButton} disabled={busy || !image || !details.trim()} onClick={submit}>{busy ? "Bhej rahe…" : "Submit → Admin"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PhotoModal({ chat, initialCaption, onClose, onSend }: { chat: Chat; initialCaption: string; onClose: () => void; onSend: (p: PhotoInput) => Promise<void> }) {
+  const [image, setImage] = useState<{ base64: string; mimeType: string; preview: string } | null>(null);
+  const [caption, setCaption] = useState(initialCaption.trim());
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const pick = async (file?: File | null) => {
+    if (!file) return;
+    setErr("");
+    try { setImage(await compressImage(file)); } catch (e) { setErr(e instanceof Error ? e.message : "Image error"); }
+  };
+  const submit = async () => {
+    if (!image) { setErr("Image choose karo"); return; }
+    setBusy(true); setErr("");
+    try { await onSend({ imageBase64: image.base64, mimeType: image.mimeType, caption: caption.trim() }); onClose(); }
+    catch (e) { setErr(e instanceof Error ? e.message : "Send failed"); }
+    finally { setBusy(false); }
+  };
+  return (
+    <div className={styles.modalBackdrop} onClick={onClose}>
+      <div className={`${styles.modal} ${styles.proofModal}`} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true"
+        onPaste={e => { const f = Array.from(e.clipboardData.files || []).find(x => x.type.startsWith("image/")); if (f) { e.preventDefault(); pick(f); } }}>
+        <h3>Photo bhejo — {chat.name}</h3>
+        <input ref={fileRef} type="file" accept="image/*" hidden onChange={e => { pick(e.target.files?.[0]); e.target.value = ""; }} />
+        <button type="button" className={styles.dropZone} onClick={() => fileRef.current?.click()}>
+          {image ? <img src={image.preview} alt="Selected" /> : <><ImagePlus size={22} /><span>Image choose karo (ya yahan paste karo)</span></>}
+        </button>
+        <label className={styles.fieldLabel} htmlFor="photo-caption">Caption (optional)</label>
+        <textarea id="photo-caption" className={styles.fieldInput} rows={3} value={caption} onChange={e => setCaption(e.target.value)} maxLength={1000} />
+        <p className={styles.fieldHint}>Photo bhejne ke baad is user ka bot band ho jayega (jaise text reply pe). Wapas chalu: Resume AI.</p>
+        {err && <div className={styles.modalError}>{err}</div>}
+        <div className={styles.modalActions}>
+          <button className={styles.ghostButton} onClick={onClose} disabled={busy}>Cancel</button>
+          <button className={styles.primaryButton} disabled={busy || !image} onClick={submit}>{busy ? "Bhej rahe…" : "Send photo"}</button>
         </div>
       </div>
     </div>
