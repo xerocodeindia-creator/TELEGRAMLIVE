@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search, CirclePause, Ban, Check, CheckCheck, CalendarDays, ChevronLeft, ChevronRight, X, SlidersHorizontal } from "lucide-react";
 import styles from "@/app/dashboard.module.css";
 import { IS_AISHA } from "@/lib/brand";
@@ -78,6 +78,10 @@ export function ChatList({ chats, selectedId, onOpen, hidden, loading }: { chats
   );
   // On phones the chips are folded behind a "Filters" button so the chat list gets the screen.
   const [showChips, setShowChips] = useState(false);
+  // Aisha: draw only the first rows (low-end phones choke on thousands of rows); "Aur dikhao" adds more.
+  const PAGE = 120;
+  const [shown, setShown] = useState(PAGE);
+  useEffect(() => { setShown(PAGE); }, [query, active, from, to, allDates]);
 
   const toggle = (key: FilterKey) => setActive(prev => (prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]));
 
@@ -116,7 +120,14 @@ export function ChatList({ chats, selectedId, onOpen, hidden, loading }: { chats
   }, [inDate, query, active]);
 
   // Count shown on each chip = how many chats you would see if you add that chip to the current selection.
+  const countCache = useMemo(() => new Map<FilterKey, number>(), [inDate, tqMonth, active]); // eslint-disable-line react-hooks/exhaustive-deps
   const countFor = (key: FilterKey) => {
+    if (IS_AISHA) { const hit = countCache.get(key); if (hit !== undefined) return hit; }
+    const n = countForRaw(key);
+    if (IS_AISHA) countCache.set(key, n);
+    return n;
+  };
+  const countForRaw = (key: FilterKey) => {
     const isStage = STAGE_FILTERS.some(f => f.key === key);
     const keys = isStage ? [...active.filter(k => !STAGE_FILTERS.some(f => f.key === k)), key] : Array.from(new Set([...active, key]));
     const base = IS_AISHA && key === "tradeQualified" ? tqMonth : inDate;
@@ -185,7 +196,7 @@ export function ChatList({ chats, selectedId, onOpen, hidden, loading }: { chats
             {(!allDates || active.length > 0) && <div><button className={styles.dateLink} onClick={() => { setAll(); setActive([]); }}>Saari chats dikhao</button></div>}
           </div>
         )}
-        {list.map(c => (
+        {(IS_AISHA ? list.slice(0, shown) : list).map(c => (
           <button key={c.id} className={`${styles.chatRow} ${c.id === selectedId ? styles.chatRowActive : ""}`} onClick={() => onOpen(c.id)}>
             <span className={styles.avatar} style={{ background: avatarColor(c.id) }}>{initials(c.name)}</span>
             <span className={styles.rowBody}>
@@ -205,6 +216,7 @@ export function ChatList({ chats, selectedId, onOpen, hidden, loading }: { chats
             </span>
           </button>
         ))}
+        {IS_AISHA && list.length > shown && <div className={styles.listEmpty}><button className={styles.dateLink} onClick={() => setShown(n => n + PAGE)}>Aur dikhao ({list.length - shown} baaki)</button></div>}
       </div>
     </section>
   );

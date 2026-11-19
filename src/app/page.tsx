@@ -14,6 +14,24 @@ const POLL_VISIBLE = 1500;
 const TASK_LINK_RE = IS_AISHA ? /Name:\s*HDFC SKY|Name:\s*CHOICE/i : /Name:\s*ANGEL ONE|TASK\s*-\s*2|TASK\s*-\s*3/i;
 const POLL_HIDDEN = 8000;
 
+type Derived = { lastIn?: Msg; taskMsgIdx: number; lastOut: number; days: string[] };
+// IST calendar day without Intl (Asia/Kolkata has no DST) — much cheaper on low-end phones.
+const IST_OFFSET = 5.5 * 3600 * 1000;
+const fastDayKey = (t: number) => new Date(t + IST_OFFSET).toISOString().slice(0, 10);
+function derive(list: Msg[]): Derived {
+  let lastIn: Msg | undefined, lastOut = -1;
+  for (let i = list.length - 1; i >= 0; i--) {
+    const m = list[i];
+    if (!lastIn && m.direction === "in") lastIn = m;
+    if (lastOut < 0 && m.direction !== "in") lastOut = i;
+    if (lastIn && lastOut >= 0) break;
+  }
+  const taskMsgIdx = list.findIndex(m => m.direction !== "in" && TASK_LINK_RE.test(m.text));
+  const days = new Set<string>();
+  for (const m of list) { const t = ms(m.time); if (t) days.add(fastDayKey(t)); }
+  return { lastIn, taskMsgIdx, lastOut, days: [...days] };
+}
+
 function ThemeToggle() {
   const [dark, setDark] = useState(false);
   useEffect(() => { setDark(document.documentElement.getAttribute("data-theme") === "dark"); }, []);
@@ -42,6 +60,9 @@ export default function DashboardPage() {
   const historyLoaded = useRef<Set<string>>(new Set());
   const pollTimer = useRef<number | undefined>(undefined);
   const inFlight = useRef(false);
+  const controlsKey = useRef("");
+  // Aisha: per-chat derived values, cached by the message array (arrays are replaced only when a chat gets new messages).
+  const derivedCache = useRef(new WeakMap<Msg[], Derived>());
 
   const showToast = useCallback((text: string) => { setToast(text); window.setTimeout(() => setToast(t => (t === text ? "" : t)), 3500); }, []);
 
@@ -80,8 +101,13 @@ export default function DashboardPage() {
       setConnected(true);
       setError("");
       cursorRef.current = { sinceId: data.cursor?.sinceId || sinceId, clientsSince: data.cursor?.clientsSince || clientsSince };
-      setControls(data.controls);
+      if (IS_AISHA) {
+        // Low-end phones: only touch state when something really changed, so the chat list is not rebuilt every poll.
+        const ctlKey = JSON.stringify(data.controls);
+        if (ctlKey !== controlsKey.current) { controlsKey.current = ctlKey; setControls(data.controls); }
+      } else setControls(data.controls);
       setClients(prev => {
+        if (IS_AISHA && !data.clientsFull && !(data.clients as ClientRow[]).length) return prev;
         const next = data.clientsFull ? {} as Record<string, ClientRow> : { ...prev };
         for (const c of data.clients as ClientRow[]) next[c.id] = c;
         return next;
@@ -130,17 +156,28 @@ export default function DashboardPage() {
       const list = messages[id] || [];
       const client = clients[id];
       const last = list[list.length - 1];
-      const lastIn = [...list].reverse().find(m => m.direction === "in");
+      let lastIn: Msg | undefined, taskMsgIdx: number, lastOut: number, dayList: string[];
+      if (IS_AISHA) {
+        let d = derivedCache.current.get(list);
+        if (!d) { d = derive(list); derivedCache.current.set(list, d); }
+        ({ lastIn, taskMsgIdx, lastOut } = d);
+        dayList = d.days;
+      } else {
+        lastIn = [...list].reverse().find(m => m.direction === "in");
+        taskMsgIdx = list.findIndex(m => m.direction !== "in" && TASK_LINK_RE.test(m.text));
+        lastOut = -1;
+        for (let i = list.length - 1; i >= 0; i--) if (list[i].direction !== "in") { lastOut = i; break; }
+        dayList = list.map(m => ms(m.time)).filter(Boolean).map(dayKey);
+      }
       // Unread = "waiting for a reply", computed only from the shared message log, so every phone/PC
       // shows the same thing. Only for qualified users (Task 1 link already sent): user messages that came
       // after the last bot/admin reply AND after the Task 1 message. Messages before Task 1 never count.
       const stage = stageOf(client);
-      const taskMsgIdx = list.findIndex(m => m.direction !== "in" && TASK_LINK_RE.test(m.text));
       const qualified = stage.index >= 0 || taskMsgIdx >= 0;
-      let lastOut = -1;
-      for (let i = list.length - 1; i >= 0; i--) if (list[i].direction !== "in") { lastOut = i; break; }
       const from = Math.max(lastOut + 1, taskMsgIdx + 1);
-      const unread = qualified ? list.slice(from).filter(m => m.direction === "in").length : 0;
+      let unread = 0;
+      if (qualified) for (let i = from; i < list.length; i++) if (list[i].direction === "in") unread++;
+      const updDay = client?.updatedAt && ms(client.updatedAt) ? [(IS_AISHA ? fastDayKey : dayKey)(ms(client.updatedAt))] : [];
       const ctl = controls.users[id];
       out.push({
         id,
@@ -155,7 +192,7 @@ export default function DashboardPage() {
         unread,
         stage,
         qualified,
-        days: new Set<string>([...list.map(m => ms(m.time)).filter(Boolean).map(dayKey), ...(client?.updatedAt && ms(client.updatedAt) ? [dayKey(ms(client.updatedAt))] : [])]),
+        days: new Set<string>([...dayList, ...updDay]),
       });
     }
     return out.sort((a, b) => b.lastTime - a.lastTime);
