@@ -8,11 +8,15 @@ import { ChatView, type ProofInput, type PhotoInput } from "@/components/ChatVie
 import { Pipeline } from "@/components/Pipeline";
 import { type Chat, type ClientRow, type Controls, type Msg, ms, msgCmp, dayKey, stageOf } from "@/lib/ui";
 import { BOT_NAME, IS_AISHA } from "@/lib/brand";
+import { loadSnapshot, saveSnapshot, clearSnapshot } from "@/lib/localcache";
 
 const POLL_VISIBLE = 1500;
 // Task 1 / Task 2 / Task 3 link messages (bot or admin). The first one marks the user as "qualified".
 const TASK_LINK_RE = IS_AISHA ? /Name:\s*HDFC SKY|Name:\s*CHOICE/i : /Name:\s*ANGEL ONE|TASK\s*-\s*2|TASK\s*-\s*3/i;
 const POLL_HIDDEN = 8000;
+// Aisha: device cache. Younger than this → only changes are fetched; older → full reload in the background.
+const SNAP_INCREMENTAL_MAX_AGE = 3 * 3600 * 1000;
+type Snap = { v: 1; savedAt: number; cursor: { sinceId: number; clientsSince: string }; clients: Record<string, ClientRow>; messages: Record<string, Msg[]>; controls: Controls };
 
 type Derived = { lastIn?: Msg; taskMsgIdx: number; lastOut: number; days: string[] };
 // IST calendar day without Intl (Asia/Kolkata has no DST) — much cheaper on low-end phones.
@@ -128,8 +132,19 @@ export default function DashboardPage() {
     const schedule = (delay: number) => { window.clearTimeout(pollTimer.current); if (!stopped) pollTimer.current = window.setTimeout(tick, delay); };
     const tick = async () => { await poll(); schedule(document.hidden ? POLL_HIDDEN : POLL_VISIBLE); };
     (async () => {
-      const auth = await fetch("/api/auth", { cache: "no-store" }).then(r => r.json()).catch(() => ({}));
+      const [auth, snap] = await Promise.all([
+        fetch("/api/auth", { cache: "no-store" }).then(r => r.json()).catch(() => ({})),
+        IS_AISHA ? loadSnapshot<Snap>() : Promise.resolve(null),
+      ]);
       if (!auth.authenticated) { location.replace("/login"); return; }
+      // Aisha: show the data saved on this phone right away; the first poll then fetches only what changed.
+      if (snap && snap.v === 1 && snap.clients && snap.messages) {
+        setClients(snap.clients);
+        setMessages(snap.messages);
+        if (snap.controls) { controlsKey.current = JSON.stringify(snap.controls); setControls(snap.controls); }
+        setConnected(true);
+        if (Date.now() - snap.savedAt < SNAP_INCREMENTAL_MAX_AGE && snap.cursor?.sinceId) cursorRef.current = snap.cursor;
+      }
       setAuthReady(true);
       schedule(0);
     })();
@@ -147,6 +162,25 @@ export default function DashboardPage() {
       .then(d => { if (d?.messages) mergeMessages(d.messages); })
       .catch(() => historyLoaded.current.delete(selectedId));
   }, [selectedId, mergeMessages]);
+
+  // Aisha: save the latest data on this device (a few seconds after it changes) for an instant next start.
+  useEffect(() => {
+    if (!IS_AISHA || !connected || !cursorRef.current.sinceId) return;
+    const t = window.setTimeout(() => {
+      const clean: Record<string, Msg[]> = {};
+      let maxId = 0, maxStamp = 0;
+      for (const [id, list] of Object.entries(messages)) {
+        const l = list.filter(m => !m.local && !m.tempKey);
+        if (l.length) clean[id] = l;
+        for (const m of l) if (m.id > maxId) maxId = m.id;
+      }
+      for (const c of Object.values(clients)) { const t = ms(c.updatedAt); if (t > maxStamp) maxStamp = t; }
+      // The cursor is taken from the saved rows themselves, so a restart can never skip a message.
+      const cursor = { sinceId: Math.min(maxId || cursorRef.current.sinceId, cursorRef.current.sinceId), clientsSince: maxStamp ? new Date(Math.min(maxStamp, ms(cursorRef.current.clientsSince) || maxStamp)).toISOString() : cursorRef.current.clientsSince };
+      saveSnapshot({ v: 1, savedAt: Date.now(), cursor, clients, messages: clean, controls } satisfies Snap);
+    }, 4000);
+    return () => window.clearTimeout(t);
+  }, [clients, messages, controls, connected]);
 
   const chats: Chat[] = useMemo(() => {
     const ids = new Set<string>([...Object.keys(clients), ...Object.keys(messages)]);
@@ -281,7 +315,7 @@ export default function DashboardPage() {
     window.setTimeout(poll, 400);
   }
 
-  async function logout() { await fetch("/api/auth", { method: "DELETE" }); location.replace("/login"); }
+  async function logout() { if (IS_AISHA) await clearSnapshot(); await fetch("/api/auth", { method: "DELETE" }); location.replace("/login"); }
 
   function openChat(id: string) { setSelectedId(id); setMobileChatOpen(true); setView("chats"); }
 
