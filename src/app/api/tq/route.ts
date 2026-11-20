@@ -13,10 +13,11 @@ const IST = 5.5 * 3600 * 1000;
 const istDay = (t: number) => new Date(t + IST).toISOString().slice(0, 10);
 let cache: { at: number; body: unknown } | null = null;
 
-export async function GET() {
+export async function GET(req: Request) {
   if (!IS_AISHA) return jsonError("Not available", 404);
   if (!(await requireAdmin())) return jsonError("Unauthorized", 401);
-  if (cache && Date.now() - cache.at < 8000) return NextResponse.json(cache.body, { headers: privateJsonHeaders });
+  const fresh = new URL(req.url).searchParams.get("fresh") === "1";
+  if (!fresh && cache && Date.now() - cache.at < 8000) return NextResponse.json(cache.body, { headers: privateJsonHeaders });
   const cfg = n8nConfig();
   const monthKey = istDay(Date.now()).slice(0, 8) + "01";
   const monthStartIso = new Date(Date.parse(monthKey + "T00:00:00Z") - IST).toISOString();
@@ -62,6 +63,10 @@ export async function GET() {
         phone: r.phone_number ? String(r.phone_number) : "",
         apps: [completed.includes("task_2_choice_finx") ? "Choice" : "", completed.includes("task_1_angel_one") ? "HDFC" : "", completed.includes("task_3") ? "Bajaj" : ""].filter(Boolean),
         bonus,
+        // "" = in the Trade Qualified list; "done" / "not_interested" = moved out by the team.
+        tradeStatus: String(r.trade_status || ""),
+        tradeStatusAt: String(r.trade_status_at || ""),
+        tradeStatusBy: String(r.trade_status_by || ""),
         last: last ? { text: last.text || (last.fileId ? "📷 Photo" : ""), direction: last.direction, time: last.time } : null,
         lastTime: last ? toMillis(last.time) : toMillis(r.updatedAt),
         unread,
