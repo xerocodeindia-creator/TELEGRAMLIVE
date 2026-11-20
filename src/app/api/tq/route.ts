@@ -13,6 +13,39 @@ const IST = 5.5 * 3600 * 1000;
 const istDay = (t: number) => new Date(t + IST).toISOString().slice(0, 10);
 let cache: { at: number; body: unknown } | null = null;
 
+// Recent messages (last 72 h) kept on a warm server instance: the first request reads the window once,
+// every later request only reads rows newer than the last id (usually one small page).
+const WINDOW = 72 * 3600 * 1000;
+type MsgState = { rows: Map<number, Row>; maxId: number; at: number };
+let msgState: MsgState | null = null;
+let msgLoading: Promise<MsgState> | null = null;
+
+async function recentMessages(tableId: string, paths: string[]): Promise<Row[]> {
+  const since = Date.now() - WINDOW;
+  const fresh = msgState && Date.now() - msgState.at < 10 * 60 * 1000 ? msgState : null;
+  if (fresh) {
+    const newer = await readRows(tableId, { pageSize: 100, max: 5000, stop: row => Number(row.id) <= fresh.maxId });
+    for (const r of newer) { fresh.rows.set(Number(r.id), r); if (Number(r.id) > fresh.maxId) fresh.maxId = Number(r.id); }
+    for (const [id, r] of fresh.rows) if (toMillis(r.createdAt) < since) fresh.rows.delete(id);
+    fresh.at = Date.now();
+    paths.push(`msgs:+${newer.length}`);
+    return [...fresh.rows.values()];
+  }
+  if (!msgLoading) {
+    msgLoading = (async () => {
+      const rows = await readRows(tableId, { max: 40000, stop: row => toMillis(row.createdAt) < since });
+      const map = new Map<number, Row>();
+      let maxId = 0;
+      for (const r of rows) { map.set(Number(r.id), r); maxId = Math.max(maxId, Number(r.id) || 0); }
+      msgState = { rows: map, maxId, at: Date.now() };
+      return msgState;
+    })().finally(() => { msgLoading = null; });
+  }
+  const st = await msgLoading;
+  paths.push(`msgs:cold`);
+  return [...st.rows.values()];
+}
+
 export async function GET(req: Request) {
   if (!IS_AISHA) return jsonError("Not available", 404);
   if (!(await requireAdmin())) return jsonError("Unauthorized", 401);
@@ -29,12 +62,10 @@ export async function GET(req: Request) {
       { columnName: "task_1_completed_at", condition: "gte", value: monthStartIso },
       { columnName: "task_2_completed_at", condition: "gte", value: monthStartIso },
     ] };
-    const since = new Date(Date.now() - 72 * 3600 * 1000).toISOString();
     // Filtered reads are small; if this n8n version rejects a filter, fall back to plain reads (same result, slower).
     const [clientRows, msgRows] = await Promise.all([
       readRows(cfg.tables.clients, { filter: clientsFilter, max: 5000 }).catch(e => { paths.push("clients-fallback:" + String(e).slice(0, 120)); return readRows(cfg.tables.clients, {}); }),
-      readRows(cfg.tables.messages, { filter: { type: "and", filters: [{ columnName: "createdAt", condition: "gte", value: since }] }, max: 6000 })
-        .catch(e => { paths.push("messages-fallback:" + String(e).slice(0, 120)); return readRows(cfg.tables.messages, { max: 6000, stop: row => toMillis(row.createdAt) < Date.parse(since) }); }),
+      recentMessages(cfg.tables.messages, paths),
     ]);
     const byChat = new Map<string, ReturnType<typeof mapMessage>[]>();
     for (const r of msgRows) {
