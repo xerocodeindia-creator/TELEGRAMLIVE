@@ -17,7 +17,7 @@ export async function GET(req: Request) {
   if (!IS_AISHA) return jsonError("Not available", 404);
   if (!(await requireAdmin())) return jsonError("Unauthorized", 401);
   const fresh = new URL(req.url).searchParams.get("fresh") === "1";
-  if (!fresh && cache && Date.now() - cache.at < 8000) return NextResponse.json(cache.body, { headers: privateJsonHeaders });
+  if (!fresh && cache && Date.now() - cache.at < 3000) return NextResponse.json(cache.body, { headers: privateJsonHeaders });
   const cfg = n8nConfig();
   const t0 = Date.now();
   const paths: string[] = [];
