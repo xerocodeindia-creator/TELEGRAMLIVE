@@ -43,7 +43,8 @@ export async function GET(req: Request) {
       if (!byChat.has(m.chatId)) byChat.set(m.chatId, []);
       byChat.get(m.chatId)!.push(m);
     }
-    const users = [];
+    type TqUser = { id: string; name: string; phone: string; apps: string[]; bonus: string; tradeStatus: string; tradeStatusAt: string; tradeStatusBy: string; last: { text: string; direction: string; time: string } | null; lastTime: number; unread: number };
+    const users: TqUser[] = [];
     for (const r of clientRows as Row[]) {
       const id = String(r.client_id || "");
       if (!/^\d+$/.test(id)) continue;
