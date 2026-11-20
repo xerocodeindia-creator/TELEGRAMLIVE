@@ -19,6 +19,8 @@ export async function GET(req: Request) {
   const fresh = new URL(req.url).searchParams.get("fresh") === "1";
   if (!fresh && cache && Date.now() - cache.at < 8000) return NextResponse.json(cache.body, { headers: privateJsonHeaders });
   const cfg = n8nConfig();
+  const t0 = Date.now();
+  const paths: string[] = [];
   const monthKey = istDay(Date.now()).slice(0, 8) + "01";
   const monthStartIso = new Date(Date.parse(monthKey + "T00:00:00Z") - IST).toISOString();
   try {
@@ -30,9 +32,9 @@ export async function GET(req: Request) {
     const since = new Date(Date.now() - 72 * 3600 * 1000).toISOString();
     // Filtered reads are small; if this n8n version rejects a filter, fall back to plain reads (same result, slower).
     const [clientRows, msgRows] = await Promise.all([
-      readRows(cfg.tables.clients, { filter: clientsFilter, max: 5000 }).catch(() => readRows(cfg.tables.clients, {})),
+      readRows(cfg.tables.clients, { filter: clientsFilter, max: 5000 }).catch(e => { paths.push("clients-fallback:" + String(e).slice(0, 120)); return readRows(cfg.tables.clients, {}); }),
       readRows(cfg.tables.messages, { filter: { type: "and", filters: [{ columnName: "createdAt", condition: "gte", value: since }] }, max: 6000 })
-        .catch(() => readRows(cfg.tables.messages, { max: 6000, stop: row => toMillis(row.createdAt) < Date.parse(since) })),
+        .catch(e => { paths.push("messages-fallback:" + String(e).slice(0, 120)); return readRows(cfg.tables.messages, { max: 6000, stop: row => toMillis(row.createdAt) < Date.parse(since) }); }),
     ]);
     const byChat = new Map<string, ReturnType<typeof mapMessage>[]>();
     for (const r of msgRows) {
@@ -74,9 +76,12 @@ export async function GET(req: Request) {
     }
     users.sort((a, b) => (b.unread > 0 ? 1 : 0) - (a.unread > 0 ? 1 : 0) || b.lastTime - a.lastTime);
     const body = { users, month: monthKey, serverTime: new Date().toISOString() };
+    const cnt = (st: string) => users.filter(u => u.tradeStatus === st).length;
+    console.log(`[tq] ${Date.now() - t0} ms fresh=${fresh} clients=${clientRows.length} messages=${msgRows.length} users=${users.length} tq=${cnt("")} done=${cnt("done")} notint=${cnt("not_interested")} ${paths.join(" ")}`);
     cache = { at: Date.now(), body };
     return NextResponse.json(body, { headers: privateJsonHeaders });
   } catch (error) {
+    console.log(`[tq] ERROR after ${Date.now() - t0} ms: ${error instanceof Error ? error.message : String(error)}`);
     return NextResponse.json({ error: error instanceof Error ? error.message : "n8n error" }, { status: 502, headers: privateJsonHeaders });
   }
 }

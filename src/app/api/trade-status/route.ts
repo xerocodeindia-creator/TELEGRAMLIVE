@@ -27,8 +27,10 @@ export async function POST(req: Request) {
     if (!row) return jsonError("User nahi mila", 404);
     const at = status ? new Date().toISOString() : "";
     await upsertByClientId(cfg.tables.clients, chatId, { trade_status: status, trade_status_at: at, trade_status_by: status ? by : "" });
+    console.log(`[trade-status] ${chatId} -> "${status}" by "${by}"`);
     return NextResponse.json({ ok: true, chatId, status, at, by: status ? by : "" }, { headers: privateJsonHeaders });
   } catch (error) {
+    console.log(`[trade-status] ERROR ${chatId}: ${error instanceof Error ? error.message : String(error)}`);
     return NextResponse.json({ error: "Save nahi hua", detail: error instanceof Error ? error.message : "" }, { status: 502, headers: privateJsonHeaders });
   }
 }
