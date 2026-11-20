@@ -27,9 +27,11 @@ export async function GET() {
       { columnName: "task_2_completed_at", condition: "gte", value: monthStartIso },
     ] };
     const since = new Date(Date.now() - 72 * 3600 * 1000).toISOString();
+    // Filtered reads are small; if this n8n version rejects a filter, fall back to plain reads (same result, slower).
     const [clientRows, msgRows] = await Promise.all([
-      readRows(cfg.tables.clients, { filter: clientsFilter, max: 5000 }),
-      readRows(cfg.tables.messages, { filter: { type: "and", filters: [{ columnName: "createdAt", condition: "gte", value: since }] }, max: 6000 }),
+      readRows(cfg.tables.clients, { filter: clientsFilter, max: 5000 }).catch(() => readRows(cfg.tables.clients, {})),
+      readRows(cfg.tables.messages, { filter: { type: "and", filters: [{ columnName: "createdAt", condition: "gte", value: since }] }, max: 6000 })
+        .catch(() => readRows(cfg.tables.messages, { max: 6000, stop: row => toMillis(row.createdAt) < Date.parse(since) })),
     ]);
     const byChat = new Map<string, ReturnType<typeof mapMessage>[]>();
     for (const r of msgRows) {
