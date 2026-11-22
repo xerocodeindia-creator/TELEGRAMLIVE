@@ -1,6 +1,6 @@
-# Team Dhruv / Aarohi Team (Android)
+# Team Dhruv / Ashish Team (Android)
 
-One code, two apps (Gradle flavors): **aisha** = Team Dhruv (`com.aisha.team`, Aisha server, unchanged) and **aarohi** = Aarohi Team (`com.aarohi.team`, `https://telegramlive.vercel.app`, pink icon, filters Angel One / Choice FinX / Bajaj). Both can be installed on the same phone.
+One code, two apps (Gradle flavors): **aisha** = Team Dhruv (`com.aisha.team`, Aisha server, unchanged) and **aarohi** = Ashish Team (Aarohi bot) (`com.aarohi.team`, `https://telegramlive.vercel.app`, pink icon, filters Angel One / Choice FinX / Bajaj). Both can be installed on the same phone.
 
 Native Android app for the Aisha team: the **Trade Qualified** list only, to help users with the trade.
 Package `com.aisha.team`. Talks to the Aisha dashboard server (`https://aisha-dashboard-black.vercel.app`) with the same login.
@@ -22,7 +22,7 @@ Needs JDK 17+ and the Android SDK (platform 34, build-tools 34.0.0). Create `loc
 ```bash
 ./gradlew testAishaReleaseUnitTest testAarohiReleaseUnitTest   # 10 Robolectric tests each, against a fake server (src/test)
 ./gradlew assembleAishaRelease    # Team Dhruv  → app/build/outputs/apk/aisha/release/
-./gradlew assembleAarohiRelease   # Aarohi Team → app/build/outputs/apk/aarohi/release/
+./gradlew assembleAarohiRelease   # Ashish Team → app/build/outputs/apk/aarohi/release/
 ```
 
 ### Signing (not in the repo)
@@ -35,6 +35,6 @@ export AISHA_KS_PASS='…'
 ./gradlew assembleRelease
 ```
 
-Aarohi Team has its own key: `AAROHI_KEYSTORE` (default `../aarohi-release.jks`, alias `aarohi`) + `AAROHI_KS_PASS`.
+Ashish Team (Aarohi flavor) has its own key: `AAROHI_KEYSTORE` (default `../aarohi-release.jks`, alias `aarohi`) + `AAROHI_KS_PASS`.
 
 Without the key, the release APK is built unsigned. Bump `versionCode` / `versionName` in `app/build.gradle` for every release.
