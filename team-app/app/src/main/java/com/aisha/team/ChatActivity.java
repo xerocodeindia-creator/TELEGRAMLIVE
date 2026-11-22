@@ -415,7 +415,7 @@ public class ChatActivity extends Activity {
             h.row.setGravity(out ? Gravity.END : Gravity.START);
             h.card.setBackground(Ui.round(out ? Ui.OUT : Ui.IN, Ui.dp(ChatActivity.this, 14)));
             h.who.setVisibility(out ? View.VISIBLE : View.GONE);
-            h.who.setText("admin".equals(m.dir) ? "Team" : "Aisha bot");
+            h.who.setText("admin".equals(m.dir) ? "Team" : BuildConfig.BOT_NAME + " bot");
             h.text.setVisibility(m.text.isEmpty() ? View.GONE : View.VISIBLE);
             h.text.setText(m.text);
             Linkify.addLinks(h.text, Linkify.WEB_URLS);

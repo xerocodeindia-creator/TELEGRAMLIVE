@@ -36,7 +36,9 @@ public class ListActivity extends Activity {
     private Adapter adapter;
     private boolean loading;
     // Filter chips: key → label. "all" clears the filter.
-    private static final String[][] FILTERS = { {"all", "Sab"}, {"unread", "Unread"}, {"bonus1", "Bonus 1"}, {"bonus2", "Bonus 2"}, {"choice", "Choice"}, {"hdfc", "HDFC"}, {"bajaj", "Bajaj"} };
+    private static final String[][] FILTERS = BuildConfig.IS_AAROHI
+        ? new String[][] { {"all", "Sab"}, {"unread", "Unread"}, {"bonus1", "Bonus 1"}, {"bonus2", "Bonus 2"}, {"angel", "Angel One"}, {"choice", "Choice FinX"}, {"bajaj", "Bajaj"} }
+        : new String[][] { {"all", "Sab"}, {"unread", "Unread"}, {"bonus1", "Bonus 1"}, {"bonus2", "Bonus 2"}, {"choice", "Choice"}, {"hdfc", "HDFC"}, {"bajaj", "Bajaj"} };
     private String filterKey = "all";
     private final List<TextView> chips = new ArrayList<>();
     // Tabs: Trade Qualified (no status) / Trade Done / Trade Not Interested.
@@ -211,6 +213,7 @@ public class ListActivity extends Activity {
             case "bonus2": return u.bonus.equals("step2");
             case "choice": return u.apps.contains("Choice");
             case "hdfc": return u.apps.contains("HDFC");
+            case "angel": return u.apps.contains("Angel One");
             case "bajaj": return u.apps.contains("Bajaj");
             default: return true;
         }

@@ -24,7 +24,7 @@ import java.util.concurrent.Executors;
 
 /** Talks to the Aisha dashboard server (same login and data as the web dashboard). */
 public final class Api {
-    public static String BASE = "https://aisha-dashboard-black.vercel.app"; // tests point this at a local server
+    public static String BASE = BuildConfig.BASE_URL; // tests point this at a local server
     private static final String COOKIE_NAME = "aarohi_admin_session";
     public static final ExecutorService IO = Executors.newFixedThreadPool(4);
     public static final Handler MAIN = new Handler(Looper.getMainLooper());

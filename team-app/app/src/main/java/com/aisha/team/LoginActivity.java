@@ -22,7 +22,7 @@ public class LoginActivity extends Activity {
         root.setPadding(pad, pad, pad, pad);
         root.setBackgroundColor(Ui.BG);
 
-        TextView title = Ui.text(this, "Team Dhruv", 26, Ui.TEXT, true);
+        TextView title = Ui.text(this, BuildConfig.APP_TITLE, 26, Ui.TEXT, true);
         title.setGravity(Gravity.CENTER);
         TextView sub = Ui.text(this, "Team login — dashboard wala password", 14, Ui.MUTED, false);
         sub.setGravity(Gravity.CENTER);
