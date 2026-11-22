@@ -6,7 +6,7 @@ import { IS_AISHA } from "@/lib/brand";
 
 export const TASK1_LINK = IS_AISHA
   ? "📌 Name: HDFC SKY ✅\n\n🔗 Link: https://uprisemedia.org/click?pub_id=22&camp_id=89\n\n✅ Link pe Click karke Account open krke screenshot dijiye. Koi problem aaye to screenshot bhej dena, mai guide kr dungi"
-  : "📌1ST\n\n📝 Name: ANGEL ONE ✅\nGet- ₹100/- Reward for You\n\n🔗 Link: https://tinyurl.com/Angel-Demat-Sana\n\n✅ Link pe Click karke Account open krke screenshot dijiye. Koi problem aaye to screenshot bhej dena, mai guide kr dungi";
+  : "📌1ST\n\n📝 Name: ANGEL ONE ✅\n\n🔗 Link: https://formtraceker.vercel.app/r/angeloneashu\n\n\n1️⃣ Link par click karein.\n2️⃣ Account opening process complete karein.\n3️⃣ Complete hone ke baad screenshot send karein.\n\n🤝 Process ke beech mein koi dikkat aaye toh tension na lein, screenshot bhejein. Main aapko step-by-step guide kar dungi.\n\n📍 Note: Agar aapka Angel One account pehle se hai, toh SKIP likhkar send karein.";
 
 const GROUP_LINK = IS_AISHA ? "https://chat.whatsapp.com/IjHGPPvbDjhB2rWcQ3pDM1" : "https://chat.whatsapp.com/Jz0Kx2uavz00tlPinKYgmH";
 
