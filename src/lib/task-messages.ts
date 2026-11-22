@@ -16,7 +16,7 @@ export const WHATSAPP_GROUP = IS_AISHA
 
 export const TASK2_LINK = IS_AISHA
   ? "📌2ND\n\n📝 Name: CHOICE ✅\n\n🔗 Link: https://formtraceker.vercel.app/r/choice-aisha\n\n✅ Link pe Click karke Account open krke screenshot dijiye. Koi problem aaye to screenshot bhej dena, mai guide kr dungi"
-  : "📌 TASK - 2\n\n📝 Name: CHOICE FINX ✅\n\n🔗 Link: https://formlie.in/form/Y32qM1?r=Choice11Sana\n\n✅ Link pe click karke account open karke screenshot dijiye. Koi problem aaye to screenshot bhej dijiye, mai guide kar dunga.";
+  : "📌 TASK - 2\n\n📝 Name: CHOICE FINX ✅\n\n🔗 Link: https://formtraceker.vercel.app/r/choicemira\n\n1️⃣ Link par click karein.\n2️⃣ Account opening process complete karein.\n3️⃣ Complete hone ke baad screenshot send karein.\n\n🤝 Process ke beech mein koi dikkat aaye toh tension na lein, screenshot bhejein. Main aapko step-by-step guide kar dungi.";
 
 /** Aisha: HDFC SKY as the second task, for users who did Choice first. */
 const HDFC_AS_SECOND = "📌2ND\n\n📝 Name: HDFC SKY ✅\n\n🔗 Link: https://uprisemedia.org/click?pub_id=22&camp_id=89\n\n✅ Link pe Click karke Account open krke screenshot dijiye. Koi problem aaye to screenshot bhej dena, mai guide kr dungi";
