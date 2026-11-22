@@ -220,7 +220,7 @@ export function ChatView({ chat, messages, visible, globalHuman, connected, onBa
             title="Enter = send, Shift+Enter = new line"
             rows={1}
           />
-          {IS_AISHA && onSendPhoto && <button className={styles.quickToggle} onClick={() => setPhotoModal(true)} disabled={!connected} title="User ko photo bhejo" aria-label="Photo bhejo"><Paperclip size={18} /></button>}
+          {onSendPhoto && <button className={styles.quickToggle} onClick={() => setPhotoModal(true)} disabled={!connected} title="User ko photo bhejo" aria-label="Photo bhejo"><Paperclip size={18} /></button>}
           <button className={styles.sendButton} onClick={send} disabled={!draft.trim() || !connected} aria-label="Send"><Send size={18} /></button>
         </div>
       </footer>

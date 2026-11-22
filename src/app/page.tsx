@@ -6,7 +6,7 @@ import styles from "./dashboard.module.css";
 import { ChatList } from "@/components/ChatList";
 import { ChatView, type ProofInput, type PhotoInput } from "@/components/ChatView";
 import { Pipeline } from "@/components/Pipeline";
-import { type Chat, type ClientRow, type Controls, type Msg, ms, msgCmp, dayKey, stageOf } from "@/lib/ui";
+import { type Chat, type ClientRow, type Controls, type Msg, ms, msgCmp, stageOf } from "@/lib/ui";
 import { BOT_NAME, IS_AISHA } from "@/lib/brand";
 
 const POLL_VISIBLE = 1500;
@@ -101,13 +101,13 @@ export default function DashboardPage() {
       setConnected(true);
       setError("");
       cursorRef.current = { sinceId: data.cursor?.sinceId || sinceId, clientsSince: data.cursor?.clientsSince || clientsSince };
-      if (IS_AISHA) {
+      {
         // Low-end phones: only touch state when something really changed, so the chat list is not rebuilt every poll.
         const ctlKey = JSON.stringify(data.controls);
         if (ctlKey !== controlsKey.current) { controlsKey.current = ctlKey; setControls(data.controls); }
-      } else setControls(data.controls);
+      }
       setClients(prev => {
-        if (IS_AISHA && !data.clientsFull && !(data.clients as ClientRow[]).length) return prev;
+        if (!data.clientsFull && !(data.clients as ClientRow[]).length) return prev;
         const next = data.clientsFull ? {} as Record<string, ClientRow> : { ...prev };
         for (const c of data.clients as ClientRow[]) next[c.id] = c;
         return next;
@@ -157,17 +157,11 @@ export default function DashboardPage() {
       const client = clients[id];
       const last = list[list.length - 1];
       let lastIn: Msg | undefined, taskMsgIdx: number, lastOut: number, dayList: string[];
-      if (IS_AISHA) {
+      {
         let d = derivedCache.current.get(list);
         if (!d) { d = derive(list); derivedCache.current.set(list, d); }
         ({ lastIn, taskMsgIdx, lastOut } = d);
         dayList = d.days;
-      } else {
-        lastIn = [...list].reverse().find(m => m.direction === "in");
-        taskMsgIdx = list.findIndex(m => m.direction !== "in" && TASK_LINK_RE.test(m.text));
-        lastOut = -1;
-        for (let i = list.length - 1; i >= 0; i--) if (list[i].direction !== "in") { lastOut = i; break; }
-        dayList = list.map(m => ms(m.time)).filter(Boolean).map(dayKey);
       }
       // Unread = "waiting for a reply", computed only from the shared message log, so every phone/PC
       // shows the same thing. Only for qualified users (Task 1 link already sent): user messages that came
@@ -177,7 +171,7 @@ export default function DashboardPage() {
       const from = Math.max(lastOut + 1, taskMsgIdx + 1);
       let unread = 0;
       if (qualified) for (let i = from; i < list.length; i++) if (list[i].direction === "in") unread++;
-      const updDay = client?.updatedAt && ms(client.updatedAt) ? [(IS_AISHA ? fastDayKey : dayKey)(ms(client.updatedAt))] : [];
+      const updDay = client?.updatedAt && ms(client.updatedAt) ? [fastDayKey(ms(client.updatedAt))] : [];
       const ctl = controls.users[id];
       out.push({
         id,
@@ -322,7 +316,7 @@ export default function DashboardPage() {
             onToggleAi={toggleUser}
             onCompleteTask={completeTask}
             onSubmitProof={submitProof}
-            onSendPhoto={IS_AISHA ? sendPhoto : undefined}
+            onSendPhoto={sendPhoto}
             connected={Boolean(connected)}
           />
         </div>

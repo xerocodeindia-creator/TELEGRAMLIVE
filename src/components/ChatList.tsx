@@ -122,9 +122,9 @@ export function ChatList({ chats, selectedId, onOpen, hidden, loading }: { chats
   // Count shown on each chip = how many chats you would see if you add that chip to the current selection.
   const countCache = useMemo(() => new Map<FilterKey, number>(), [inDate, tqMonth, active]); // eslint-disable-line react-hooks/exhaustive-deps
   const countFor = (key: FilterKey) => {
-    if (IS_AISHA) { const hit = countCache.get(key); if (hit !== undefined) return hit; }
+    { const hit = countCache.get(key); if (hit !== undefined) return hit; }
     const n = countForRaw(key);
-    if (IS_AISHA) countCache.set(key, n);
+    countCache.set(key, n);
     return n;
   };
   const countForRaw = (key: FilterKey) => {
@@ -196,7 +196,7 @@ export function ChatList({ chats, selectedId, onOpen, hidden, loading }: { chats
             {(!allDates || active.length > 0) && <div><button className={styles.dateLink} onClick={() => { setAll(); setActive([]); }}>Saari chats dikhao</button></div>}
           </div>
         )}
-        {(IS_AISHA ? list.slice(0, shown) : list).map(c => (
+        {list.slice(0, shown).map(c => (
           <button key={c.id} className={`${styles.chatRow} ${c.id === selectedId ? styles.chatRowActive : ""}`} onClick={() => onOpen(c.id)}>
             <span className={styles.avatar} style={{ background: avatarColor(c.id) }}>{initials(c.name)}</span>
             <span className={styles.rowBody}>
@@ -216,7 +216,7 @@ export function ChatList({ chats, selectedId, onOpen, hidden, loading }: { chats
             </span>
           </button>
         ))}
-        {IS_AISHA && list.length > shown && <div className={styles.listEmpty}><button className={styles.dateLink} onClick={() => setShown(n => n + PAGE)}>Aur dikhao ({list.length - shown} baaki)</button></div>}
+        {list.length > shown && <div className={styles.listEmpty}><button className={styles.dateLink} onClick={() => setShown(n => n + PAGE)}>Aur dikhao ({list.length - shown} baaki)</button></div>}
       </div>
     </section>
   );

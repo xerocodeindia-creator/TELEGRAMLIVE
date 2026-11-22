@@ -93,7 +93,7 @@ export async function GET(req: Request) {
   const full = !sinceId;
 
   try {
-    if (IS_AISHA && full) {
+    if (full) {
       const { messageRows, clientRows, controlRows, maxId, clientsStamp } = await aishaFull();
       const messages = messageRows
         .filter(m => m && (m.chat_id != null || m.user_id != null))

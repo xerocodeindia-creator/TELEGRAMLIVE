@@ -1,15 +1,13 @@
 import { NextResponse } from "next/server";
 import { requireAdmin, jsonError, privateJsonHeaders } from "@/lib/auth";
 import { sendTelegramPhoto, logAdminPhoto, pauseAfterHumanReply } from "@/lib/n8n";
-import { IS_AISHA } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-// Aisha only: admin sends a photo (+ optional caption) to one user from the chat.
+// Admin sends a photo (+ optional caption) to one user from the chat.
 // Same rules as a text reply: logged in the history and the user is handed over to humans.
 export async function POST(req: Request) {
-  if (!IS_AISHA) return jsonError("Not available", 404);
   if (!(await requireAdmin())) return jsonError("Unauthorized", 401);
   const origin = req.headers.get("origin");
   if (origin && new URL(origin).host !== new URL(req.url).host) return jsonError("Cross-origin request denied", 403);

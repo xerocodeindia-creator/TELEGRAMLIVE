@@ -1,7 +1,7 @@
 "use client";
 import { useEffect } from "react";
 
-// Aisha only: registers the service worker that makes the dashboard installable.
+// Registers the service worker that makes the dashboard installable.
 export function PwaRegister() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
