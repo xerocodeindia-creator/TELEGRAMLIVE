@@ -74,7 +74,7 @@ export async function GET(req: Request) {
       if (!byChat.has(m.chatId)) byChat.set(m.chatId, []);
       byChat.get(m.chatId)!.push(m);
     }
-    type TqUser = { id: string; name: string; phone: string; apps: string[]; bonus: string; tradeStatus: string; tradeStatusAt: string; tradeStatusBy: string; last: { text: string; direction: string; time: string } | null; lastTime: number; unread: number };
+    type TqUser = { id: string; name: string; phone: string; apps: string[]; bonus: string; tradeStatus: string; tradeStatusAt: string; tradeStatusBy: string; tradeCampaign: string; last: { text: string; direction: string; time: string } | null; lastTime: number; unread: number };
     const users: TqUser[] = [];
     for (const r of clientRows as Row[]) {
       const id = String(r.client_id || "");
@@ -101,6 +101,7 @@ export async function GET(req: Request) {
         tradeStatus: String(r.trade_status || ""),
         tradeStatusAt: String(r.trade_status_at || ""),
         tradeStatusBy: String(r.trade_status_by || ""),
+        tradeCampaign: String(r.trade_campaign || ""),
         last: last ? { text: last.text || (last.fileId ? "📷 Photo" : ""), direction: last.direction, time: last.time } : null,
         lastTime: last ? toMillis(last.time) : toMillis(r.updatedAt),
         unread,
@@ -109,7 +110,7 @@ export async function GET(req: Request) {
     users.sort((a, b) => (b.unread > 0 ? 1 : 0) - (a.unread > 0 ? 1 : 0) || b.lastTime - a.lastTime);
     const body = { users, month: monthKey, serverTime: new Date().toISOString() };
     const cnt = (st: string) => users.filter(u => u.tradeStatus === st).length;
-    console.log(`[tq] ${Date.now() - t0} ms fresh=${fresh} clients=${clientRows.length} messages=${msgRows.length} users=${users.length} tq=${cnt("")} done=${cnt("done")} notint=${cnt("not_interested")} ${paths.join(" ")}`);
+    console.log(`[tq] ${Date.now() - t0} ms fresh=${fresh} clients=${clientRows.length} messages=${msgRows.length} users=${users.length} tq=${cnt("")} done=${cnt("done")} notint=${cnt("not_interested")} payment=${cnt("payment_sent")} ${paths.join(" ")}`);
     cache = { at: Date.now(), body };
     return NextResponse.json(body, { headers: privateJsonHeaders });
   } catch (error) {

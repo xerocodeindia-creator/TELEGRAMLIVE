@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 // Aisha team app: mark a Trade Qualified user as "done" (trade completed) or "not_interested",
 // or clear it ("") to put the user back in the Trade Qualified list. Stored on aisha_client_progress.
-const ALLOWED = new Set(["done", "not_interested", ""]);
+const ALLOWED = new Set(["done", "not_interested", "payment_sent", ""]);
 
 export async function POST(req: Request) {
   if (!IS_AISHA) return jsonError("Not available", 404);
