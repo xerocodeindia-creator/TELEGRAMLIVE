@@ -1,0 +1,10 @@
+# Build output and local machine files
+.gradle/
+build/
+app/build/
+local.properties
+*.apk
+# Signing key and its password — never commit
+*.jks
+*.keystore
+keystore-password.txt

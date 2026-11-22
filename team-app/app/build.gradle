@@ -1,0 +1,19 @@
+plugins { id "com.android.application" }
+android {
+    namespace "com.aisha.team"
+    compileSdk 34
+    defaultConfig { applicationId "com.aisha.team"; minSdk 24; targetSdk 34; versionCode 8; versionName "1.7" }
+    // Release signing: the key is NOT in the repo. Put it at AISHA_KEYSTORE (default ../aisha-release.jks)
+    // and its password in AISHA_KS_PASS. Without the key the release APK is built unsigned.
+    def ks = file(System.getenv("AISHA_KEYSTORE") ?: "../aisha-release.jks")
+    signingConfigs { release { if (ks.exists()) { storeFile ks; storePassword System.getenv("AISHA_KS_PASS"); keyAlias "aisha"; keyPassword System.getenv("AISHA_KS_PASS") } } }
+    buildTypes { release { minifyEnabled false; if (ks.exists()) signingConfig signingConfigs.release } }
+    testOptions { unitTests { includeAndroidResources = true; returnDefaultValues = true; all { maxHeapSize = "2g" } } }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}
+
+dependencies {
+    testImplementation "junit:junit:4.13.2"
+    testImplementation "org.robolectric:robolectric:4.13"
+    testImplementation "com.squareup.okhttp3:mockwebserver:4.12.0"
+}
