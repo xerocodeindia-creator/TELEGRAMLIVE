@@ -3,6 +3,7 @@ import { requireAdmin, jsonError, privateJsonHeaders } from "@/lib/auth";
 import { n8nConfig, findByColumn, upsertByClientId, sendTelegram, sendTelegramPhoto, logAdminMessage, logAdminPhoto, pauseAfterHumanReply } from "@/lib/n8n";
 import { IS_AISHA } from "@/lib/brand";
 import { TRADE_TEMPLATES } from "@/lib/trade-templates";
+import { logTradeEvent } from "@/lib/trade-history";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -47,6 +48,7 @@ export async function POST(req: Request) {
     await upsertByClientId(cfg.tables.clients, chatId, { trade_status: "payment_sent", trade_status_at: at, trade_status_by: by, trade_campaign: template.key });
     saved = true;
   } catch {}
+  if (saved) await logTradeEvent(chatId, String(row.first_name || ""), "payment_sent", template.key, by, at);
   try { await pauseAfterHumanReply(chatId); } catch {}
   console.log(`[trade-payment] ${chatId} campaign=${template.key} by "${by}" photo=ok text=${textSent ? "ok" : "FAILED " + textError} saved=${saved}`);
   return NextResponse.json({ ok: true, status: "payment_sent", at, by, campaign: template.key, textSent, textError, saved }, { headers: privateJsonHeaders });

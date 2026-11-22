@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin, jsonError, privateJsonHeaders } from "@/lib/auth";
 import { n8nConfig, upsertByClientId, findByColumn } from "@/lib/n8n";
 import { IS_AISHA } from "@/lib/brand";
+import { logTradeEvent } from "@/lib/trade-history";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,7 @@ export async function POST(req: Request) {
     if (!row) return jsonError("User nahi mila", 404);
     const at = status ? new Date().toISOString() : "";
     await upsertByClientId(cfg.tables.clients, chatId, { trade_status: status, trade_status_at: at, trade_status_by: status ? by : "" });
+    await logTradeEvent(chatId, String(row.first_name || ""), status || "back_to_tq", status ? String(row.trade_campaign || "") : "", by, at || new Date().toISOString());
     console.log(`[trade-status] ${chatId} -> "${status}" by "${by}"`);
     return NextResponse.json({ ok: true, chatId, status, at, by: status ? by : "" }, { headers: privateJsonHeaders });
   } catch (error) {
