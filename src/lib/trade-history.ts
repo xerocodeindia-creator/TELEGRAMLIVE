@@ -1,8 +1,10 @@
 import { insertRows } from "@/lib/n8n";
+import { IS_AISHA } from "@/lib/brand";
 
 // Aisha team app: one row per trade step (payment_sent / done / not_interested / back_to_tq), kept for reporting.
 // Rows of a finished month are deleted only after the admin says "Haan" on Telegram (n8n monthly ask).
-export const TRADE_HISTORY_TABLE = "4ocBRPmHG2W93Lmr";
+// aisha_trade_history / aarohi_trade_history
+export const TRADE_HISTORY_TABLE = IS_AISHA ? "4ocBRPmHG2W93Lmr" : "xxKDoB65wPW6JiEM";
 const IST = 5.5 * 3600 * 1000;
 
 export async function logTradeEvent(clientId: string, name: string, event: string, campaign: string, by: string, atIso: string) {

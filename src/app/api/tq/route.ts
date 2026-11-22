@@ -6,7 +6,7 @@ import { IS_AISHA } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
 
-// Aisha team app: the Trade Qualified list only (same rule as the dashboard filter):
+// Team app (Aisha and Aarohi): the Trade Qualified list only (same rule as the dashboard filter):
 // bonus campaign users + users whose first Choice / HDFC SKY account was approved this month (IST).
 // Small and fast: two filtered reads instead of the full dashboard load.
 const IST = 5.5 * 3600 * 1000;
@@ -47,7 +47,6 @@ async function recentMessages(tableId: string, paths: string[]): Promise<Row[]> 
 }
 
 export async function GET(req: Request) {
-  if (!IS_AISHA) return jsonError("Not available", 404);
   if (!(await requireAdmin())) return jsonError("Unauthorized", 401);
   const fresh = new URL(req.url).searchParams.get("fresh") === "1";
   if (!fresh && cache && Date.now() - cache.at < 3000) return NextResponse.json(cache.body, { headers: privateJsonHeaders });
@@ -61,6 +60,8 @@ export async function GET(req: Request) {
       { columnName: "bonus_status", condition: "isNotEmpty", value: null },
       { columnName: "task_1_completed_at", condition: "gte", value: monthStartIso },
       { columnName: "task_2_completed_at", condition: "gte", value: monthStartIso },
+      // Aarohi: any first task counts, Bajaj included.
+      ...(IS_AISHA ? [] : [{ columnName: "task_3_completed_at", condition: "gte", value: monthStartIso }]),
     ] };
     // Filtered reads are small; if this n8n version rejects a filter, fall back to plain reads (same result, slower).
     const [clientRows, msgRows] = await Promise.all([
@@ -82,9 +83,9 @@ export async function GET(req: Request) {
       let completed: string[] = [];
       try { const v = JSON.parse(String(r.completed_tasks || "[]")); if (Array.isArray(v)) completed = v.map(String); } catch {}
       const bonus = String(r.bonus_status || "");
-      const ts = [r.task_1_completed_at, r.task_2_completed_at].map(toMillis).filter(Boolean);
+      const ts = (IS_AISHA ? [r.task_1_completed_at, r.task_2_completed_at] : [r.task_1_completed_at, r.task_2_completed_at, r.task_3_completed_at]).map(toMillis).filter(Boolean);
       const tqDay = ts.length ? istDay(Math.min(...ts)) : "";
-      const qualifiedThisMonth = !!tqDay && tqDay >= monthKey && completed.some(t => t === "task_1_angel_one" || t === "task_2_choice_finx");
+      const qualifiedThisMonth = !!tqDay && tqDay >= monthKey && completed.some(t => t === "task_1_angel_one" || t === "task_2_choice_finx" || (!IS_AISHA && t === "task_3"));
       if (!bonus && !qualifiedThisMonth) continue;
       const list = (byChat.get(id) || []).sort((a, b) => a.id - b.id);
       const last = list[list.length - 1];
@@ -95,7 +96,9 @@ export async function GET(req: Request) {
         id,
         name: String(r.first_name || "Telegram user"),
         phone: r.phone_number ? String(r.phone_number) : "",
-        apps: [completed.includes("task_2_choice_finx") ? "Choice" : "", completed.includes("task_1_angel_one") ? "HDFC" : "", completed.includes("task_3") ? "Bajaj" : ""].filter(Boolean),
+        apps: (IS_AISHA
+          ? [completed.includes("task_2_choice_finx") ? "Choice" : "", completed.includes("task_1_angel_one") ? "HDFC" : "", completed.includes("task_3") ? "Bajaj" : ""]
+          : [completed.includes("task_1_angel_one") ? "Angel One" : "", completed.includes("task_2_choice_finx") ? "Choice FinX" : "", completed.includes("task_3") ? "Bajaj" : ""]).filter(Boolean),
         bonus,
         // "" = in the Trade Qualified list; "done" / "not_interested" = moved out by the team.
         tradeStatus: String(r.trade_status || ""),

@@ -1,17 +1,15 @@
 import { NextResponse } from "next/server";
 import { requireAdmin, jsonError, privateJsonHeaders } from "@/lib/auth";
 import { n8nConfig, upsertByClientId, findByColumn } from "@/lib/n8n";
-import { IS_AISHA } from "@/lib/brand";
 import { logTradeEvent } from "@/lib/trade-history";
 
 export const dynamic = "force-dynamic";
 
-// Aisha team app: mark a Trade Qualified user as "done" (trade completed) or "not_interested",
+// Team app (Aisha and Aarohi): mark a Trade Qualified user as "done" (trade completed) or "not_interested",
 // or clear it ("") to put the user back in the Trade Qualified list. Stored on aisha_client_progress.
 const ALLOWED = new Set(["done", "not_interested", "payment_sent", ""]);
 
 export async function POST(req: Request) {
-  if (!IS_AISHA) return jsonError("Not available", 404);
   if (!(await requireAdmin())) return jsonError("Unauthorized", 401);
   const origin = req.headers.get("origin");
   if (origin && new URL(origin).host !== new URL(req.url).host) return jsonError("Cross-origin request denied", 403);

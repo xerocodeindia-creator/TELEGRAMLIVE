@@ -1,17 +1,15 @@
 import { NextResponse } from "next/server";
 import { requireAdmin, jsonError, privateJsonHeaders } from "@/lib/auth";
 import { n8nConfig, findByColumn, upsertByClientId, sendTelegram, sendTelegramPhoto, logAdminMessage, logAdminPhoto, pauseAfterHumanReply } from "@/lib/n8n";
-import { IS_AISHA } from "@/lib/brand";
 import { TRADE_TEMPLATES } from "@/lib/trade-templates";
 import { logTradeEvent } from "@/lib/trade-history";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-// Aisha team app: "Payment bheja". Sends the payment screenshot, then the campaign's trade instructions,
+// Team app (Aisha and Aarohi): "Payment bheja". Sends the payment screenshot, then the campaign's trade instructions,
 // and moves the user to the Payment tab (trade_status = payment_sent). Nothing is marked if the photo fails.
 export async function POST(req: Request) {
-  if (!IS_AISHA) return jsonError("Not available", 404);
   if (!(await requireAdmin())) return jsonError("Unauthorized", 401);
   const origin = req.headers.get("origin");
   if (origin && new URL(origin).host !== new URL(req.url).host) return jsonError("Cross-origin request denied", 403);
