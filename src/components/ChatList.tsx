@@ -38,7 +38,8 @@ function daysBetween(a: string, b: string) {
 const monthStartKey = () => todayKey().slice(0, 8) + "01";
 // Aisha: the IST day a user became Trade Qualified (first Choice or HDFC SKY account approved). "" = not qualified.
 function tradeQualifiedDay(c: Chat) {
-  const ts = [c.client?.t1, c.client?.t2].map(v => (v ? Date.parse(v) : NaN)).filter(n => !Number.isNaN(n));
+  // Aarohi: any first task counts (Angel One, Choice FinX or Bajaj).
+  const ts = (IS_AISHA ? [c.client?.t1, c.client?.t2] : [c.client?.t1, c.client?.t2, c.client?.t3]).map(v => (v ? Date.parse(v) : NaN)).filter(n => !Number.isNaN(n));
   return ts.length ? dayKey(Math.min(...ts)) : "";
 }
 function dateTitle(key: string) {
@@ -85,11 +86,10 @@ export function ChatList({ chats, selectedId, onOpen, hidden, loading }: { chats
 
   const toggle = (key: FilterKey) => setActive(prev => (prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]));
 
-  // Aisha: while Trade Qualified is on, the list is everyone who became trade qualified THIS MONTH
-  // (1st of the month → today, IST), whatever the date bar says. The date bar itself is not changed. Aarohi is unchanged.
-  const tqMode = IS_AISHA && active.includes("tradeQualified");
+  // While Trade Qualified is on, the list is everyone who became trade qualified THIS MONTH
+  // (1st of the month → today, IST), whatever the date bar says. The date bar itself is not changed.
+  const tqMode = active.includes("tradeQualified");
   const tqMonth = useMemo(() => {
-    if (!IS_AISHA) return [];
     const f = monthStartKey(), t = todayKey();
     // Bonus campaign users always count as Trade Qualified, whatever their task dates.
     return chats.filter(c => { if (c.client?.bonus) return true; const d = tradeQualifiedDay(c); return !!d && d >= f && d <= t; });
@@ -106,7 +106,7 @@ export function ChatList({ chats, selectedId, onOpen, hidden, loading }: { chats
     if (keys.includes("unread") && c.unread === 0) return false;
     if (keys.includes("paused") && !c.paused) return false;
     if (keys.includes("qualified") && !c.qualified) return false;
-    if (keys.includes("tradeQualified") && !(IS_AISHA && c.client?.bonus) && !(c.client?.completed || []).some(id => id === "task_1_angel_one" || (IS_AISHA && id === "task_2_choice_finx"))) return false;
+    if (keys.includes("tradeQualified") && !c.client?.bonus && !(c.client?.completed || []).some(id => id === "task_1_angel_one" || id === "task_2_choice_finx" || (!IS_AISHA && id === "task_3"))) return false;
     return true;
   };
 
@@ -130,7 +130,7 @@ export function ChatList({ chats, selectedId, onOpen, hidden, loading }: { chats
   const countForRaw = (key: FilterKey) => {
     const isStage = STAGE_FILTERS.some(f => f.key === key);
     const keys = isStage ? [...active.filter(k => !STAGE_FILTERS.some(f => f.key === k)), key] : Array.from(new Set([...active, key]));
-    const base = IS_AISHA && key === "tradeQualified" ? tqMonth : inDate;
+    const base = key === "tradeQualified" ? tqMonth : inDate;
     return base.filter(c => matches(c, keys)).length;
   };
 
