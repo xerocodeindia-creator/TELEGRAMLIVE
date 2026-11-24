@@ -29,7 +29,7 @@ export const TASK3_PRE = IS_AISHA
 
 export const TASK3_LINK = IS_AISHA
   ? "📌 TASK - 3 \n\nReward - 500₹\n\n📝 Name: BAJAJ BROKING ✅\n\n🔗 Link: https://ft.hatsconsulting.me/form?id=844&ref=DHRUV\n\n\n✅ Link pe click karke account open karke screenshot dijiye. Koi problem aaye to screenshot bhej dijiye, mai guide kar dungi."
-  : "📌 TASK - 3\n📝 Name: BAJAJ ✅ \n\n\n🔗 Link: https://partners.marcadeo.com/click?oid=72&uid=823&aff_sub=531\n\n✅ Link pe Click karke Account open krke screenshot dijiye. Koi problem aaye to screenshot bhej dena, mai guide kr dungi";
+  : "📌 TASK - 3\n📝 Name: BAJAJ ✅ \n\n\n🔗 Link: https://formtracker.in/form?id=254&ref=NASA1\n\n✅ Link pe Click karke Account open krke screenshot dijiye. Koi problem aaye to screenshot bhej dena, mai guide kr dungi";
 
 export const BAJAJ_DONE = "✅ Bajaj task complete ho gaya hai!\n\n📩 Aage ke updates WhatsApp group par milenge. Group join karke rakhein.\n\nNote: Account activation aur payment ka final status provider/admin ke update par depend karega.";
 
