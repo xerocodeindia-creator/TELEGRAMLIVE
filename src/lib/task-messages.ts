@@ -8,7 +8,7 @@ export const TASK1_LINK = IS_AISHA
   ? "Reward - 500₹\n\n📌 Name: HDFC SKY ✅\n\n🔗 Link: https://formtraceker.vercel.app/r/hdfcskylaxkar\n\n✅ Link pe Click karke Account open krke screenshot dijiye. Koi problem aaye to screenshot bhej dena, mai guide kr dungi"
   : "📌1ST\n\n📝 Name: ANGEL ONE ✅\n\n🔗 Link: https://formtraceker.vercel.app/r/angeloneashu\n\n\n1️⃣ Link par click karein.\n2️⃣ Account opening process complete karein.\n3️⃣ Complete hone ke baad screenshot send karein.\n\n🤝 Process ke beech mein koi dikkat aaye toh tension na lein, screenshot bhejein. Main aapko step-by-step guide kar dungi.\n\n📍 Note: Agar aapka Angel One account pehle se hai, toh SKIP likhkar send karein.";
 
-const GROUP_LINK = IS_AISHA ? "https://chat.whatsapp.com/IjHGPPvbDjhB2rWcQ3pDM1" : "https://chat.whatsapp.com/Jz0Kx2uavz00tlPinKYgmH";
+const GROUP_LINK = IS_AISHA ? "https://chat.whatsapp.com/FC7sJt02qiN2aphCv1QLIt" : "https://chat.whatsapp.com/Jz0Kx2uavz00tlPinKYgmH";
 
 export const WHATSAPP_GROUP = IS_AISHA
   ? "Okay Brother! ❤️\n\nAapka 1st Task abhi Pending for Approval stage mein hai. Jaise hi task approve hota hai, hamari team aapko directly Telegram par message karke aapka payment process kar degi. 💸\n\n‼️ Important: Payment receive karne ke liye minimum 2 tasks complete karna compulsory hai. Sirf 1 task complete karne par koi payment nahi milega.\n\n📌 Account Active hone mein maximum 48 hours lag sakte hain.\n\nTab tak aap hamara WhatsApp Group join kar lijiye. Saare important updates aur further instructions aapko isi group mein milenge. ✅\n\n🔗 Join Group: " + GROUP_LINK + "\n\n👇 Ab neeche diya gaya 2nd task complete kijiye"
