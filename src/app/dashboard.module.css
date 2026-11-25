@@ -243,3 +243,8 @@
   .rowTop strong{font-size:14px}
   .rowPreview{font-size:12.5px}
 }
+
+/* Press-and-hold to copy */
+.copyable{cursor:default}
+@media (hover:none){.copyable{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}}
+.copyToast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);z-index:80;background:#1f2933;color:#fff;padding:8px 14px;border-radius:20px;font-size:13px;box-shadow:0 6px 18px rgba(0,0,0,.25);pointer-events:none}

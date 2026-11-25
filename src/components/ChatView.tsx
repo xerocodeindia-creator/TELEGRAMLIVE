@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type PointerEvent as RPointerEvent, type MouseEvent as RMouseEvent } from "react";
 import { ArrowLeft, Bot, Check, CheckCheck, CirclePause, CirclePlay, Clock3, AlertCircle, Send, ChevronDown, X, Zap, ImageOff, MessageCircle, CircleCheckBig, Phone, Hash, ImagePlus, Paperclip } from "lucide-react";
 import styles from "@/app/dashboard.module.css";
 import { type Chat, type Msg, TASKS, taskTitle, avatarColor, dayKey, dayLabel, fullDate, initials, isMedia, ms, timeOf } from "@/lib/ui";
@@ -12,6 +12,42 @@ const URL_RE = /(https?:\/\/[^\s<]+[^\s<.,:;"')\]])/g;
 function Linkified({ text }: { text: string }) {
   const parts = text.split(URL_RE);
   return <>{parts.map((p, i) => (i % 2 === 1 ? <a key={i} href={p} target="_blank" rel="noopener noreferrer">{p}</a> : <Fragment key={i}>{p}</Fragment>))}</>;
+}
+
+async function copyText(text: string): Promise<boolean> {
+  try { await navigator.clipboard.writeText(text); return true; } catch { /* fallback below */ }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select(); const ok = document.execCommand("copy"); ta.remove(); return ok;
+  } catch { return false; }
+}
+
+/** Press and hold (~0.5s) on touch or mouse to copy. Cancels on move/scroll; swallows the click that follows. */
+function useLongPressCopy(onCopied: (ok: boolean) => void) {
+  const timer = useRef<number | undefined>(undefined);
+  const start = useRef<{ x: number; y: number } | null>(null);
+  const fired = useRef(false);
+  const cancel = () => { window.clearTimeout(timer.current); start.current = null; };
+  return useCallback((text: string) => ({
+    onPointerDown: (e: RPointerEvent) => {
+      if (e.button !== 0 || !text) return;
+      fired.current = false; start.current = { x: e.clientX, y: e.clientY };
+      window.clearTimeout(timer.current);
+      timer.current = window.setTimeout(async () => {
+        fired.current = true; start.current = null;
+        const ok = await copyText(text);
+        if (ok && navigator.vibrate) navigator.vibrate(30);
+        onCopied(ok);
+      }, 500);
+    },
+    onPointerMove: (e: RPointerEvent) => {
+      if (start.current && Math.hypot(e.clientX - start.current.x, e.clientY - start.current.y) > 10) cancel();
+    },
+    onPointerUp: cancel, onPointerCancel: cancel, onPointerLeave: cancel,
+    onContextMenu: (e: RMouseEvent) => { if (fired.current || start.current) e.preventDefault(); },
+    onClickCapture: (e: RMouseEvent) => { if (fired.current) { e.preventDefault(); e.stopPropagation(); fired.current = false; } },
+  }), [onCopied]);
 }
 
 function Photo({ fileId, onOpen, onLoad }: { fileId: string; onOpen: (src: string) => void; onLoad: () => void }) {
@@ -48,6 +84,13 @@ export function ChatView({ chat, messages, visible, globalHuman, connected, onBa
   const [proofModal, setProofModal] = useState(false);
   const [photoModal, setPhotoModal] = useState(false);
   const [aiBusy, setAiBusy] = useState(false);
+  const [copied, setCopied] = useState("");
+  const copyTimer = useRef<number | undefined>(undefined);
+  const pressCopy = useLongPressCopy(useCallback((ok: boolean) => {
+    setCopied(ok ? "Copied ✓" : "Copy nahi hua");
+    window.clearTimeout(copyTimer.current);
+    copyTimer.current = window.setTimeout(() => setCopied(""), 1500);
+  }, []));
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const atBottom = useRef(true);
   const [newBelow, setNewBelow] = useState(0);
@@ -152,8 +195,8 @@ export function ChatView({ chat, messages, visible, globalHuman, connected, onBa
         <div className={styles.chatTitle}>
           <strong>{chat.name}</strong>
           <span className={styles.chatSub}>
-            <span><Hash size={12} />{chat.id}</span>
-            {chat.phone && <a href={`tel:${chat.phone}`}><Phone size={12} />{chat.phone}</a>}
+            <span className={styles.copyable} {...pressCopy(chat.id)} title="Daba ke rakho = copy"><Hash size={12} />{chat.id}</span>
+            {chat.phone && <a href={`tel:${chat.phone}`} className={styles.copyable} {...pressCopy(chat.phone)}><Phone size={12} />{chat.phone}</a>}
           </span>
         </div>
         <div className={styles.chatActions}>
@@ -184,7 +227,7 @@ export function ChatView({ chat, messages, visible, globalHuman, connected, onBa
               const media = isMedia(m);
               return (
                 <div key={m.tempKey || m.id} className={`${styles.bubbleRow} ${out ? styles.rowOut : styles.rowIn} ${first ? styles.groupFirst : ""}`}>
-                  <div className={`${styles.bubble} ${m.direction === "in" ? styles.bubbleIn : m.direction === "admin" ? styles.bubbleAdmin : styles.bubbleBot} ${last ? styles.bubbleTail : ""} ${media ? styles.bubbleMedia : ""}`} title={fullDate(m.time)}>
+                  <div className={`${styles.bubble} ${m.direction === "in" ? styles.bubbleIn : m.direction === "admin" ? styles.bubbleAdmin : styles.bubbleBot} ${last ? styles.bubbleTail : ""} ${media ? styles.bubbleMedia : ""} ${m.text ? styles.copyable : ""}`} title={fullDate(m.time)} {...(m.text ? pressCopy(m.text) : {})}>
                     {first && out && <span className={styles.sender}>{m.direction === "admin" ? (m.status === "manual_admin_task" ? "You · task update" : "You") : <><Bot size={11} /> {BOT_NAME} bot</>}</span>}
                     {media && (m.fileId ? <Photo fileId={m.fileId} onOpen={setLightbox} onLoad={() => { if (atBottom.current) scrollToBottom(); }} /> : <div className={styles.photoFailed}><ImageOff size={22} /><span>Attachment</span></div>)}
                     {!media && !m.text && m.type !== "text" && <span className={styles.mediaNote}>🎙️ {m.type} message</span>}
@@ -225,6 +268,7 @@ export function ChatView({ chat, messages, visible, globalHuman, connected, onBa
         </div>
       </footer>
 
+      {copied && <div className={styles.copyToast} role="status">{copied}</div>}
       {lightbox && <div className={styles.lightbox} onClick={() => setLightbox("")}><button aria-label="Close"><X size={22} /></button><img src={lightbox} alt="Screenshot full size" onClick={e => e.stopPropagation()} /></div>}
       {proofModal && chat.client && <ProofModal chat={chat} defaultIndex={canComplete ? currentTaskIndex : 2} onClose={() => setProofModal(false)} onSubmit={onSubmitProof} />}
       {photoModal && onSendPhoto && <PhotoModal chat={chat} initialCaption={draft} onClose={() => setPhotoModal(false)} onSend={async p => { await onSendPhoto(chat, p); if (p.caption && p.caption === draft.trim()) { setDraft(""); drafts.current[chat.id] = ""; } }} />}
