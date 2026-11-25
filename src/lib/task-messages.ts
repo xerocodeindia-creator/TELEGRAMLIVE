@@ -5,7 +5,7 @@
 import { IS_AISHA } from "@/lib/brand";
 
 export const TASK1_LINK = IS_AISHA
-  ? "📌 Name: HDFC SKY ✅\n\n🔗 Link: https://uprisemedia.org/click?pub_id=22&camp_id=89\n\n✅ Link pe Click karke Account open krke screenshot dijiye. Koi problem aaye to screenshot bhej dena, mai guide kr dungi"
+  ? "📌 Name: HDFC SKY ✅\n\n🔗 Link: https://formtraceker.vercel.app/r/hdfcskylaxkar\n\n✅ Link pe Click karke Account open krke screenshot dijiye. Koi problem aaye to screenshot bhej dena, mai guide kr dungi"
   : "📌1ST\n\n📝 Name: ANGEL ONE ✅\n\n🔗 Link: https://formtraceker.vercel.app/r/angeloneashu\n\n\n1️⃣ Link par click karein.\n2️⃣ Account opening process complete karein.\n3️⃣ Complete hone ke baad screenshot send karein.\n\n🤝 Process ke beech mein koi dikkat aaye toh tension na lein, screenshot bhejein. Main aapko step-by-step guide kar dungi.\n\n📍 Note: Agar aapka Angel One account pehle se hai, toh SKIP likhkar send karein.";
 
 const GROUP_LINK = IS_AISHA ? "https://chat.whatsapp.com/IjHGPPvbDjhB2rWcQ3pDM1" : "https://chat.whatsapp.com/Jz0Kx2uavz00tlPinKYgmH";
@@ -19,16 +19,16 @@ export const TASK2_LINK = IS_AISHA
   : "📌 TASK - 2\n\n📝 Name: CHOICE FINX ✅\n\n🔗 Link: https://formtraceker.vercel.app/r/choicemira\n\n1️⃣ Link par click karein.\n2️⃣ Account opening process complete karein.\n3️⃣ Complete hone ke baad screenshot send karein.\n\n🤝 Process ke beech mein koi dikkat aaye toh tension na lein, screenshot bhejein. Main aapko step-by-step guide kar dungi.";
 
 /** Aisha: HDFC SKY as the second task, for users who did Choice first. */
-const HDFC_AS_SECOND = "📌2ND\n\n📝 Name: HDFC SKY ✅\n\n🔗 Link: https://uprisemedia.org/click?pub_id=22&camp_id=89\n\n✅ Link pe Click karke Account open krke screenshot dijiye. Koi problem aaye to screenshot bhej dena, mai guide kr dungi";
+const HDFC_AS_SECOND = "📌2ND\n\n📝 Name: HDFC SKY ✅\n\n🔗 Link: https://formtraceker.vercel.app/r/hdfcskylaxkar\n\n✅ Link pe Click karke Account open krke screenshot dijiye. Koi problem aaye to screenshot bhej dena, mai guide kr dungi";
 /** Aisha: Choice as a pasted reply, without a task number. */
 const CHOICE_PLAIN = "📌 Name: CHOICE ✅\n\n🔗 Link: https://formtraceker.vercel.app/r/choice-aisha\n\n✅ Link pe Click karke Account open krke screenshot dijiye. Koi problem aaye to screenshot bhej dena, mai guide kr dungi";
 
 export const TASK3_PRE = IS_AISHA
-  ? "Apka 2nd task complete ho gya hai ✅\n\nAb aapka 3rd task 👇\n\n📌 TASK - 3 \n\nReward - 500₹\n\n📝 Name: BAJAJ BROKING ✅\n\n🔗 Link: https://ft.hatsconsulting.me/form?id=844&ref=DHRUV\n\n\n✅ Link pe click karke account open karke screenshot dijiye. Koi problem aaye to screenshot bhej dijiye, mai guide kar dungi."
+  ? "Apka 2nd task complete ho gya hai ✅\n\nAb aapka 3rd task 👇\n\n📌 TASK - 3 \n\nReward - 500₹\n\n📝 Name: BAJAJ BROKING ✅\n\n🔗 Link: https://uprisemedia.org/click?pub_id=22&camp_id=123\n\n\n✅ Link pe click karke account open karke screenshot dijiye. Koi problem aaye to screenshot bhej dijiye, mai guide kar dungi."
   : "Apka 2nd task complete ho gya hai , mai apko 3rd task ka link deta hu wait";
 
 export const TASK3_LINK = IS_AISHA
-  ? "📌 TASK - 3 \n\nReward - 500₹\n\n📝 Name: BAJAJ BROKING ✅\n\n🔗 Link: https://ft.hatsconsulting.me/form?id=844&ref=DHRUV\n\n\n✅ Link pe click karke account open karke screenshot dijiye. Koi problem aaye to screenshot bhej dijiye, mai guide kar dungi."
+  ? "📌 TASK - 3 \n\nReward - 500₹\n\n📝 Name: BAJAJ BROKING ✅\n\n🔗 Link: https://uprisemedia.org/click?pub_id=22&camp_id=123\n\n\n✅ Link pe click karke account open karke screenshot dijiye. Koi problem aaye to screenshot bhej dijiye, mai guide kar dungi."
   : "📌 TASK - 3\n📝 Name: BAJAJ ✅ \n\n\n🔗 Link: https://formtracker.in/form?id=254&ref=NASA1\n\n✅ Link pe Click karke Account open krke screenshot dijiye. Koi problem aaye to screenshot bhej dena, mai guide kr dungi";
 
 export const BAJAJ_DONE = "✅ Bajaj task complete ho gaya hai!\n\n📩 Aage ke updates WhatsApp group par milenge. Group join karke rakhein.\n\nNote: Account activation aur payment ka final status provider/admin ke update par depend karega.";
@@ -57,14 +57,14 @@ const DONE_NEXT = { current_task: "completed", flow_step: "all_tasks_completed",
 const HDFC_NEXT = { current_task: "task_1_angel_one", flow_step: "task_1_active", next_task_allowed: true };
 const CHOICE_NEXT = { current_task: "task_2_choice_finx", flow_step: "task_2_active", next_task_allowed: true };
 const END_LINE = "\n\n✅ Link pe Click karke Account open krke screenshot dijiye. Koi problem aaye to screenshot bhej dena, mai guide kr dungi";
-const hdfcTask = (label: string) => "📌" + label + "\n\n📝 Name: HDFC SKY ✅\n\n🔗 Link: https://uprisemedia.org/click?pub_id=22&camp_id=89" + END_LINE;
+const hdfcTask = (label: string) => "📌" + label + "\n\n📝 Name: HDFC SKY ✅\n\n🔗 Link: https://formtraceker.vercel.app/r/hdfcskylaxkar" + END_LINE;
 const choiceTask = (label: string) => "📌" + label + "\n\n📝 Name: CHOICE ✅\n\n🔗 Link: https://formtraceker.vercel.app/r/choice-aisha" + END_LINE;
 /** Aisha: sent when the last open task is done (same text as the workflow's "Send All Done After HDFC/Choice"). */
 const ALL_DONE = "✅ Aapke saare tasks complete ho gaye hain! 🎉\n\n📩 Aage ke updates WhatsApp group par milenge. Group join karke rakhein.\n\nNote: Account activation aur payment ka final status provider/admin ke update par depend karega.";
 
 /**
- * What completing this task does. Aarohi has a fixed order. Aisha mirrors the workflow (16 Nov 2026):
- * new users do Bajaj → HDFC SKY → Choice, earlier users Choice → HDFC SKY → Bajaj, so the next step depends
+ * What completing this task does. Aarohi has a fixed order. Aisha mirrors the workflow: from 26 Nov 2026
+ * new users do HDFC SKY → Choice → Bajaj (16–25 Nov: Bajaj → HDFC SKY → Choice; earlier: Choice → HDFC SKY → Bajaj), so the next step depends
  * on what is already done or skipped. The WhatsApp group message goes only after the user's first task.
  */
 export function completionPlan(taskId: TaskId, completed: string[] = [], skipped: string[] = []): Plan {
@@ -107,7 +107,7 @@ export function nextTextFor(taskId: TaskId, completed: string[] = [], skipped: s
 export const QUICK_REPLIES: { label: string; text: string }[] = [
   { label: IS_AISHA ? "HDFC SKY link" : "Task 1 link", text: TASK1_LINK },
   { label: IS_AISHA ? "Choice link" : "Task 2 link", text: IS_AISHA ? CHOICE_PLAIN : TASK2_LINK },
-  { label: IS_AISHA ? "Bajaj link" : "Task 3 link", text: IS_AISHA ? "📌 Name: BAJAJ BROKING ✅\n\n🔗 Link: https://ft.hatsconsulting.me/form?id=844&ref=DHRUV" + END_LINE : TASK3_LINK },
+  { label: IS_AISHA ? "Bajaj link" : "Task 3 link", text: IS_AISHA ? "📌 Name: BAJAJ BROKING ✅\n\n🔗 Link: https://uprisemedia.org/click?pub_id=22&camp_id=123" + END_LINE : TASK3_LINK },
   { label: "App login", text: "Play Store se Angel One app download karke uske Home Page ka screenshot bhej dijiye.\n\n📲 Play Store Link: https://play.google.com/store/apps/details?id=com.msf.angelmobile&hl=en" },
   { label: "Group link", text: "WhatsApp group join kar lijiye, saare updates yahin milenge ✅\n🔗 " + GROUP_LINK },
   { label: "Screenshot bhejo", text: IS_AISHA ? "Account open hone ke baad final screen ka screenshot bhej dijiye 🙂\n\nHDFC SKY: \"We have received your details\" wala screen ya Home screen.\nChoice: Home screen jahan aapka naam aur \"Account Activation in Progress\" ya \"Account Setup ✅\" dikhe." : "Account open hone ke baad profile page ka screenshot bhej dijiye jahan aapka naam aur Client ID dikhe 🙂" },
