@@ -2,12 +2,43 @@ plugins { id "com.android.application" }
 android {
     namespace "com.aisha.team"
     compileSdk 34
-    defaultConfig { applicationId "com.aisha.team"; minSdk 24; targetSdk 34; versionCode 9; versionName "1.8" }
+    defaultConfig { applicationId "com.aisha.team"; minSdk 24; targetSdk 34; versionCode 8; versionName "1.7" }
+    buildFeatures { buildConfig true }
+    // Two apps from one code: "aisha" = Team Dhruv (unchanged package, Aisha server),
+    // "aarohi" = Ashish Team (Aarohi bot) (own package so both install side by side, Aarohi server, own signing key).
+    flavorDimensions "bot"
+    productFlavors {
+        aisha {
+            dimension "bot"
+            buildConfigField "String", "BASE_URL", '"https://aisha-dashboard-black.vercel.app"'
+            buildConfigField "String", "BOT_NAME", '"Aisha"'
+            buildConfigField "String", "APP_TITLE", '"Team Dhruv"'
+            buildConfigField "boolean", "IS_AAROHI", "false"
+            resValue "string", "app_name", "Team Dhruv"
+        }
+        aarohi {
+            dimension "bot"
+            applicationId "com.aarohi.team"
+            versionCode 2; versionName "1.1"
+            buildConfigField "String", "BASE_URL", '"https://telegramlive.vercel.app"'
+            buildConfigField "String", "BOT_NAME", '"Aarohi"'
+            buildConfigField "String", "APP_TITLE", '"Ashish Team"'
+            buildConfigField "boolean", "IS_AAROHI", "true"
+            resValue "string", "app_name", "Ashish Team"
+        }
+    }
     // Release signing: the key is NOT in the repo. Put it at AISHA_KEYSTORE (default ../aisha-release.jks)
     // and its password in AISHA_KS_PASS. Without the key the release APK is built unsigned.
+    // Aarohi uses its own key: AAROHI_KEYSTORE (default ../aarohi-release.jks) + AAROHI_KS_PASS, alias "aarohi".
     def ks = file(System.getenv("AISHA_KEYSTORE") ?: "../aisha-release.jks")
-    signingConfigs { release { if (ks.exists()) { storeFile ks; storePassword System.getenv("AISHA_KS_PASS"); keyAlias "aisha"; keyPassword System.getenv("AISHA_KS_PASS") } } }
-    buildTypes { release { minifyEnabled false; if (ks.exists()) signingConfig signingConfigs.release } }
+    def aks = file(System.getenv("AAROHI_KEYSTORE") ?: "../aarohi-release.jks")
+    signingConfigs {
+        release { if (ks.exists()) { storeFile ks; storePassword System.getenv("AISHA_KS_PASS"); keyAlias "aisha"; keyPassword System.getenv("AISHA_KS_PASS") } }
+        aarohiRelease { if (aks.exists()) { storeFile aks; storePassword System.getenv("AAROHI_KS_PASS"); keyAlias "aarohi"; keyPassword System.getenv("AAROHI_KS_PASS") } }
+    }
+    buildTypes { release { minifyEnabled false } } // signing comes from the flavor
+    productFlavors.aisha { if (ks.exists()) signingConfig signingConfigs.release }
+    productFlavors.aarohi { if (aks.exists()) signingConfig signingConfigs.aarohiRelease }
     testOptions { unitTests { includeAndroidResources = true; returnDefaultValues = true; all { maxHeapSize = "2g" } } }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
 }
