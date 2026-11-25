@@ -261,6 +261,15 @@ public class AppFlowTest {
         }
         assertTrue(sawUpi);
         assertTrue(sawPhoto);
+        // Long-press a message copies its text
+        for (int i = 0; i < lv.getAdapter().getCount(); i++) {
+            View v = lv.getAdapter().getView(i, null, lv);
+            TextView upi = findText(v, "UPI: ravi@ybl");
+            if (upi != null) { assertTrue(upi.performLongClick()); break; }
+        }
+        android.content.ClipboardManager cm = (android.content.ClipboardManager) chat.getSystemService(android.content.Context.CLIPBOARD_SERVICE);
+        assertEquals("UPI: ravi@ybl", cm.getPrimaryClip().getItemAt(0).getText().toString());
+        assertEquals("Copy ho gaya ✅", org.robolectric.shadows.ShadowToast.getTextOfLatestToast());
         waitFor("image requested", () -> server.log.stream().anyMatch(s -> s.startsWith("GET /api/telegram-file?file_id=FILE1")));
         // Send text
         EditText input = null;

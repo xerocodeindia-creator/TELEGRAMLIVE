@@ -2,6 +2,9 @@ package com.aisha.team;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -12,6 +15,7 @@ import android.text.method.LinkMovementMethod;
 import android.text.util.Linkify;
 import android.util.Base64;
 import android.view.Gravity;
+import android.view.HapticFeedbackConstants;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
@@ -393,6 +397,14 @@ public class ChatActivity extends Activity {
             .show();
     }
 
+    /** Long-press on a message: the whole message text goes to the clipboard. */
+    void copyToClipboard(String s) {
+        ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        if (cm == null) return;
+        cm.setPrimaryClip(ClipData.newPlainText("message", s));
+        Toast.makeText(this, "Copy ho gaya ✅", Toast.LENGTH_SHORT).show();
+    }
+
     private class Adapter extends BaseAdapter {
         public int getCount() { return items.size(); }
         public Object getItem(int i) { return items.get(i); }
@@ -415,12 +427,17 @@ public class ChatActivity extends Activity {
             h.row.setGravity(out ? Gravity.END : Gravity.START);
             h.card.setBackground(Ui.round(out ? Ui.OUT : Ui.IN, Ui.dp(ChatActivity.this, 14)));
             h.who.setVisibility(out ? View.VISIBLE : View.GONE);
-            h.who.setText("admin".equals(m.dir) ? "Team" : BuildConfig.BOT_NAME + " bot");
+            h.who.setText("admin".equals(m.dir) ? "Team" : "Aisha bot");
             h.text.setVisibility(m.text.isEmpty() ? View.GONE : View.VISIBLE);
             h.text.setText(m.text);
             Linkify.addLinks(h.text, Linkify.WEB_URLS);
             h.text.setMovementMethod(LinkMovementMethod.getInstance());
             h.meta.setText(m.pending ? "bhej rahe…" : Ui.time(m.time));
+            final String copyText = m.text;
+            View.OnLongClickListener copier = v -> { if (copyText.isEmpty()) return false; v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS); copyToClipboard(copyText); return true; };
+            h.card.setOnLongClickListener(copier);
+            h.text.setOnLongClickListener(copier);
+            h.photo.setOnLongClickListener(copier);
             if (m.fileId != null && !m.fileId.isEmpty()) {
                 h.photo.setVisibility(View.VISIBLE);
                 h.photo.setTag(m.fileId);
@@ -456,7 +473,7 @@ public class ChatActivity extends Activity {
             photo.setScaleType(ImageView.ScaleType.FIT_CENTER);
             text = Ui.text(ChatActivity.this, "", 15, Ui.TEXT, false);
             text.setLinkTextColor(0xFF9CCBFF);
-            text.setTextIsSelectable(true);
+            text.setLongClickable(true);
             meta = Ui.text(ChatActivity.this, "", 11, 0xFFAEB9CC, false);
             meta.setGravity(Gravity.END);
             card.addView(who); card.addView(photo, new LinearLayout.LayoutParams(-2, -2)); card.addView(text); card.addView(meta, new LinearLayout.LayoutParams(-1, -2));
