@@ -2,7 +2,7 @@ plugins { id "com.android.application" }
 android {
     namespace "com.aisha.team"
     compileSdk 34
-    defaultConfig { applicationId "com.aisha.team"; minSdk 24; targetSdk 34; versionCode 8; versionName "1.7" }
+    defaultConfig { applicationId "com.aisha.team"; minSdk 24; targetSdk 34; versionCode 9; versionName "1.8" }
     buildFeatures { buildConfig true }
     // Two apps from one code: "aisha" = Team Dhruv (unchanged package, Aisha server),
     // "aarohi" = Ashish Team (Aarohi bot) (own package so both install side by side, Aarohi server, own signing key).
