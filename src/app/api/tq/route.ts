@@ -97,7 +97,7 @@ export async function GET(req: Request) {
         name: String(r.first_name || "Telegram user"),
         phone: r.phone_number ? String(r.phone_number) : "",
         apps: (IS_AISHA
-          ? [completed.includes("task_2_choice_finx") ? "Choice" : "", completed.includes("task_1_angel_one") ? "HDFC" : "", completed.includes("task_3") ? "Bajaj" : ""]
+          ? [completed.includes("task_2_choice_finx") ? "Choice" : "", completed.includes("task_1_angel_one") ? "HDFC" : "", completed.includes("task_3") ? "Bajaj/Zerodha" : ""]
           : [completed.includes("task_1_angel_one") ? "Angel One" : "", completed.includes("task_2_choice_finx") ? "Choice FinX" : "", completed.includes("task_3") ? "Bajaj" : ""]).filter(Boolean),
         bonus,
         // "" = in the Trade Qualified list; "done" / "not_interested" = moved out by the team.
