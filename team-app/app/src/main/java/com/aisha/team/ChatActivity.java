@@ -433,7 +433,7 @@ public class ChatActivity extends Activity {
             Linkify.addLinks(h.text, Linkify.WEB_URLS);
             h.text.setMovementMethod(LinkMovementMethod.getInstance());
             h.meta.setText(m.pending ? "bhej rahe…" : Ui.time(m.time));
-            if (!BuildConfig.IS_AAROHI) { // Team Dhruv only: long-press copies the message
+            { // Long-press copies the message (Team Dhruv + Ashish Team)
                 final String copyText = m.text;
                 View.OnLongClickListener copier = v -> { if (copyText.isEmpty()) return false; v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS); copyToClipboard(copyText); return true; };
                 h.card.setOnLongClickListener(copier);
@@ -475,7 +475,7 @@ public class ChatActivity extends Activity {
             photo.setScaleType(ImageView.ScaleType.FIT_CENTER);
             text = Ui.text(ChatActivity.this, "", 15, Ui.TEXT, false);
             text.setLinkTextColor(0xFF9CCBFF);
-            if (BuildConfig.IS_AAROHI) text.setTextIsSelectable(true); else text.setLongClickable(true);
+            text.setLongClickable(true);
             meta = Ui.text(ChatActivity.this, "", 11, 0xFFAEB9CC, false);
             meta.setGravity(Gravity.END);
             card.addView(who); card.addView(photo, new LinearLayout.LayoutParams(-2, -2)); card.addView(text); card.addView(meta, new LinearLayout.LayoutParams(-1, -2));

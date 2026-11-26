@@ -261,7 +261,7 @@ public class AppFlowTest {
         }
         assertTrue(sawUpi);
         assertTrue(sawPhoto);
-        if (!BuildConfig.IS_AAROHI) { // Long-press a message copies its text (Team Dhruv)
+        { // Long-press a message copies its text (both apps)
             for (int i = 0; i < lv.getAdapter().getCount(); i++) {
                 View v = lv.getAdapter().getView(i, null, lv);
                 TextView upi = findText(v, "UPI: ravi@ybl");
