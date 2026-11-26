@@ -24,11 +24,11 @@ const HDFC_AS_SECOND = "📌2ND\n\nReward - 500₹\n\n📝 Name: HDFC SKY ✅\n\
 const CHOICE_PLAIN = "Reward - 500₹\n\n📌 Name: CHOICE ✅\n\n🔗 Link: https://formtraceker.vercel.app/r/choice-aisha\n\n✅ Link pe Click karke Account open krke screenshot dijiye. Koi problem aaye to screenshot bhej dena, mai guide kr dungi";
 
 export const TASK3_PRE = IS_AISHA
-  ? "Apka 2nd task complete ho gya hai ✅\n\nAb aapka 3rd task 👇\n\n📌 TASK - 3 \n\nReward - 500₹\n\n📝 Name: ZERODHA ✅\n\n🔗 Link: https://formtraceker.vercel.app/r/zerodhalaxkar\n\n\n✅ Link pe click karke account open karke screenshot dijiye. Koi problem aaye to screenshot bhej dijiye, mai guide kar dungi."
+  ? "Apka 2nd task complete ho gya hai ✅\n\n3rd task jald hi aapko yahin mil jayega 🙏 Tab tak WhatsApp group join karke rakhiye, saare updates wahin milenge." // Task 3 on hold since 26 Nov 2026 16:04 (Zerodha off)
   : "Apka 2nd task complete ho gya hai , mai apko 3rd task ka link deta hu wait";
 
 export const TASK3_LINK = IS_AISHA
-  ? "📌 TASK - 3 \n\nReward - 500₹\n\n📝 Name: ZERODHA ✅\n\n🔗 Link: https://formtraceker.vercel.app/r/zerodhalaxkar\n\n\n✅ Link pe click karke account open karke screenshot dijiye. Koi problem aaye to screenshot bhej dijiye, mai guide kar dungi."
+  ? "Aapka 3rd task abhi available nahi hai 🙂 Jald hi aapko yahin mil jayega 🙏 Tab tak WhatsApp group join karke rakhiye, saare updates wahin milenge."
   : "📌 TASK - 3\n📝 Name: BAJAJ ✅ \n\n\n🔗 Link: https://formtracker.in/form?id=254&ref=NASA1\n\n✅ Link pe Click karke Account open krke screenshot dijiye. Koi problem aaye to screenshot bhej dena, mai guide kr dungi";
 
 export const BAJAJ_DONE = (IS_AISHA ? "✅ Aapka 3rd task bhi complete ho gaya hai!" : "✅ Bajaj task complete ho gaya hai!") + "\n\n📩 Aage ke updates WhatsApp group par milenge. Group join karke rakhein.\n\nNote: Account activation aur payment ka final status provider/admin ke update par depend karega.";
@@ -99,7 +99,7 @@ export function nextTextFor(taskId: TaskId, completed: string[] = [], skipped: s
   const next = plan.next.current_task;
   if (next === "task_1_angel_one") return group + "HDFC SKY link";
   if (next === "task_2_choice_finx") return group + "Choice link";
-  if (next === "task_3") return "\"2nd task complete\" + Zerodha Task 3 link";
+  if (next === "task_3") return "\"2nd task complete\" + 3rd task jald milega (no link)";
   return taskId === "task_3" ? "Task 3 completion message" : "All tasks complete message";
 }
 
@@ -107,7 +107,7 @@ export function nextTextFor(taskId: TaskId, completed: string[] = [], skipped: s
 export const QUICK_REPLIES: { label: string; text: string }[] = [
   { label: IS_AISHA ? "HDFC SKY link" : "Task 1 link", text: TASK1_LINK },
   { label: IS_AISHA ? "Choice link" : "Task 2 link", text: IS_AISHA ? CHOICE_PLAIN : TASK2_LINK },
-  { label: IS_AISHA ? "Zerodha link" : "Task 3 link", text: IS_AISHA ? "Reward - 500₹\n\n📌 Name: ZERODHA ✅\n\n🔗 Link: https://formtraceker.vercel.app/r/zerodhalaxkar" + END_LINE : TASK3_LINK },
+  { label: IS_AISHA ? "3rd task (hold)" : "Task 3 link", text: IS_AISHA ? "Aapka 3rd task abhi available nahi hai 🙂 Jald hi aapko yahin mil jayega 🙏 Tab tak WhatsApp group join karke rakhiye, saare updates wahin milenge." : TASK3_LINK },
   { label: "App login", text: "Play Store se Angel One app download karke uske Home Page ka screenshot bhej dijiye.\n\n📲 Play Store Link: https://play.google.com/store/apps/details?id=com.msf.angelmobile&hl=en" },
   { label: "Group link", text: "WhatsApp group join kar lijiye, saare updates yahin milenge ✅\n🔗 " + GROUP_LINK },
   { label: "Screenshot bhejo", text: IS_AISHA ? "Account open hone ke baad final screen ka screenshot bhej dijiye 🙂\n\nHDFC SKY: \"We have received your details\" wala screen ya Home screen.\nChoice: Home screen jahan aapka naam aur \"Account Activation in Progress\" ya \"Account Setup ✅\" dikhe." : "Account open hone ke baad profile page ka screenshot bhej dijiye jahan aapka naam aur Client ID dikhe 🙂" },
