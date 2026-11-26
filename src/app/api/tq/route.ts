@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin, jsonError, privateJsonHeaders } from "@/lib/auth";
-import { n8nConfig, readRows, type Row } from "@/lib/n8n";
+import { n8nConfig, readRows, listRows, type Row } from "@/lib/n8n";
 import { toMillis, mapMessage } from "@/lib/mappers";
 import { IS_AISHA } from "@/lib/brand";
 
@@ -13,37 +13,46 @@ const IST = 5.5 * 3600 * 1000;
 const istDay = (t: number) => new Date(t + IST).toISOString().slice(0, 10);
 let cache: { at: number; body: unknown } | null = null;
 
-// Recent messages (last 72 h) kept on a warm server instance: the first request reads the window once,
-// every later request only reads rows newer than the last id (usually one small page).
-const WINDOW = 72 * 3600 * 1000;
-type MsgState = { rows: Map<number, Row>; maxId: number; at: number };
-let msgState: MsgState | null = null;
-let msgLoading: Promise<MsgState> | null = null;
+// Messages per Trade Qualified user (27 Nov 2026): the old version read every message of the last 72 h
+// (37k rows after the follow-ups started, 134 s cold) and the app gave up after 60 s, showing 0 users.
+// Now: cold = the last PER_CHAT messages of each TQ user (filtered reads, in parallel);
+// warm = only rows newer than the last id seen, added to the chats we track.
+const PER_CHAT = 15;
+type ChatCache = { byChat: Map<string, Row[]>; maxId: number; at: number };
+let chatCache: ChatCache | null = null;
 
-async function recentMessages(tableId: string, paths: string[]): Promise<Row[]> {
-  const since = Date.now() - WINDOW;
-  const fresh = msgState && Date.now() - msgState.at < 10 * 60 * 1000 ? msgState : null;
-  if (fresh) {
-    const newer = await readRows(tableId, { pageSize: 100, max: 5000, stop: row => Number(row.id) <= fresh.maxId });
-    for (const r of newer) { fresh.rows.set(Number(r.id), r); if (Number(r.id) > fresh.maxId) fresh.maxId = Number(r.id); }
-    for (const [id, r] of fresh.rows) if (toMillis(r.createdAt) < since) fresh.rows.delete(id);
-    fresh.at = Date.now();
-    paths.push(`msgs:+${newer.length}`);
-    return [...fresh.rows.values()];
+async function lastMessagesFor(tableId: string, chatId: string): Promise<Row[]> {
+  const { rows } = await listRows(tableId, { limit: PER_CHAT, sortBy: "id:desc", filter: { type: "and", filters: [{ columnName: "chat_id", condition: "eq", value: chatId }] } });
+  return rows;
+}
+
+async function inBatches<T>(items: T[], size: number, fn: (x: T) => Promise<void>) {
+  for (let i = 0; i < items.length; i += size) await Promise.all(items.slice(i, i + size).map(fn));
+}
+
+async function messagesForChats(tableId: string, chatIds: string[], paths: string[]): Promise<Map<string, Row[]>> {
+  const warm = chatCache && Date.now() - chatCache.at < 10 * 60 * 1000 ? chatCache : null;
+  if (warm) {
+    const newer = await readRows(tableId, { pageSize: 100, max: 5000, sortBy: "id:desc", stop: row => Number(row.id) <= warm.maxId });
+    for (const r of newer) {
+      const id = String(r.chat_id ?? r.user_id ?? "").trim();
+      const list = warm.byChat.get(id);
+      if (list) { list.unshift(r); if (list.length > PER_CHAT) list.length = PER_CHAT; }
+      if (Number(r.id) > warm.maxId) warm.maxId = Number(r.id);
+    }
+    const missing = chatIds.filter(id => !warm.byChat.has(id));
+    await inBatches(missing, 25, async id => { warm.byChat.set(id, await lastMessagesFor(tableId, id).catch(() => [])); });
+    warm.at = Date.now();
+    paths.push(`msgs:+${newer.length} new-chats:${missing.length}`);
+    return warm.byChat;
   }
-  if (!msgLoading) {
-    msgLoading = (async () => {
-      const rows = await readRows(tableId, { max: 40000, stop: row => toMillis(row.createdAt) < since });
-      const map = new Map<number, Row>();
-      let maxId = 0;
-      for (const r of rows) { map.set(Number(r.id), r); maxId = Math.max(maxId, Number(r.id) || 0); }
-      msgState = { rows: map, maxId, at: Date.now() };
-      return msgState;
-    })().finally(() => { msgLoading = null; });
-  }
-  const st = await msgLoading;
-  paths.push(`msgs:cold`);
-  return [...st.rows.values()];
+  const top = await listRows(tableId, { limit: 1, sortBy: "id:desc" });
+  const maxId = Number(top.rows[0]?.id) || 0;
+  const byChat = new Map<string, Row[]>();
+  await inBatches(chatIds, 25, async id => { byChat.set(id, await lastMessagesFor(tableId, id).catch(() => [])); });
+  chatCache = { byChat, maxId, at: Date.now() };
+  paths.push(`msgs:cold chats=${chatIds.length}`);
+  return byChat;
 }
 
 export async function GET(req: Request) {
@@ -64,17 +73,20 @@ export async function GET(req: Request) {
       ...(IS_AISHA ? [] : [{ columnName: "task_3_completed_at", condition: "gte", value: monthStartIso }]),
     ] };
     // Filtered reads are small; if this n8n version rejects a filter, fall back to plain reads (same result, slower).
-    const [clientRows, msgRows] = await Promise.all([
-      readRows(cfg.tables.clients, { filter: clientsFilter, max: 5000 }).catch(e => { paths.push("clients-fallback:" + String(e).slice(0, 120)); return readRows(cfg.tables.clients, {}); }),
-      recentMessages(cfg.tables.messages, paths),
-    ]);
+    const clientRows = await readRows(cfg.tables.clients, { filter: clientsFilter, max: 5000 }).catch(e => { paths.push("clients-fallback:" + String(e).slice(0, 120)); return readRows(cfg.tables.clients, {}); });
+    // Same qualification rule as below, decided first so messages are read only for these users.
+    const qualifies = (r: Row) => {
+      let done: string[] = [];
+      try { const v = JSON.parse(String(r.completed_tasks || "[]")); if (Array.isArray(v)) done = v.map(String); } catch {}
+      const ts = (IS_AISHA ? [r.task_1_completed_at, r.task_2_completed_at] : [r.task_1_completed_at, r.task_2_completed_at, r.task_3_completed_at]).map(toMillis).filter(Boolean);
+      const day = ts.length ? istDay(Math.min(...ts)) : "";
+      return !!r.bonus_status || (!!day && day >= monthKey && done.some(t => t === "task_1_angel_one" || t === "task_2_choice_finx" || (!IS_AISHA && t === "task_3")));
+    };
+    const tqIds = (clientRows as Row[]).filter(r => /^\d+$/.test(String(r.client_id || "")) && qualifies(r)).map(r => String(r.client_id));
+    const rawByChat = await messagesForChats(cfg.tables.messages, tqIds, paths);
     const byChat = new Map<string, ReturnType<typeof mapMessage>[]>();
-    for (const r of msgRows) {
-      const m = mapMessage(r);
-      if (!/^\d+$/.test(m.chatId)) continue;
-      if (!byChat.has(m.chatId)) byChat.set(m.chatId, []);
-      byChat.get(m.chatId)!.push(m);
-    }
+    for (const id of tqIds) byChat.set(id, (rawByChat.get(id) || []).map(mapMessage));
+    const msgCount = [...byChat.values()].reduce((n, l) => n + l.length, 0);
     type TqUser = { id: string; name: string; phone: string; apps: string[]; bonus: string; tradeStatus: string; tradeStatusAt: string; tradeStatusBy: string; tradeCampaign: string; last: { text: string; direction: string; time: string } | null; lastTime: number; unread: number };
     const users: TqUser[] = [];
     for (const r of clientRows as Row[]) {
@@ -113,7 +125,7 @@ export async function GET(req: Request) {
     users.sort((a, b) => (b.unread > 0 ? 1 : 0) - (a.unread > 0 ? 1 : 0) || b.lastTime - a.lastTime);
     const body = { users, month: monthKey, serverTime: new Date().toISOString() };
     const cnt = (st: string) => users.filter(u => u.tradeStatus === st).length;
-    console.log(`[tq] ${Date.now() - t0} ms fresh=${fresh} clients=${clientRows.length} messages=${msgRows.length} users=${users.length} tq=${cnt("")} done=${cnt("done")} notint=${cnt("not_interested")} payment=${cnt("payment_sent")} ${paths.join(" ")}`);
+    console.log(`[tq] ${Date.now() - t0} ms fresh=${fresh} clients=${clientRows.length} messages=${msgCount} users=${users.length} tq=${cnt("")} done=${cnt("done")} notint=${cnt("not_interested")} payment=${cnt("payment_sent")} ${paths.join(" ")}`);
     cache = { at: Date.now(), body };
     return NextResponse.json(body, { headers: privateJsonHeaders });
   } catch (error) {
