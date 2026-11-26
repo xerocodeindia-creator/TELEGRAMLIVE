@@ -17,7 +17,7 @@ let cache: { at: number; body: unknown } | null = null;
 // (37k rows after the follow-ups started, 134 s cold) and the app gave up after 60 s, showing 0 users.
 // Now: cold = the last PER_CHAT messages of each TQ user (filtered reads, in parallel);
 // warm = only rows newer than the last id seen, added to the chats we track.
-const PER_CHAT = 15;
+const PER_CHAT = 12;
 type ChatCache = { byChat: Map<string, Row[]>; maxId: number; at: number };
 let chatCache: ChatCache | null = null;
 
@@ -31,7 +31,7 @@ async function inBatches<T>(items: T[], size: number, fn: (x: T) => Promise<void
 }
 
 async function messagesForChats(tableId: string, chatIds: string[], paths: string[]): Promise<Map<string, Row[]>> {
-  const warm = chatCache && Date.now() - chatCache.at < 10 * 60 * 1000 ? chatCache : null;
+  const warm = chatCache && Date.now() - chatCache.at < 6 * 3600 * 1000 ? chatCache : null;
   if (warm) {
     const newer = await readRows(tableId, { pageSize: 100, max: 5000, sortBy: "id:desc", stop: row => Number(row.id) <= warm.maxId });
     for (const r of newer) {
@@ -41,7 +41,7 @@ async function messagesForChats(tableId: string, chatIds: string[], paths: strin
       if (Number(r.id) > warm.maxId) warm.maxId = Number(r.id);
     }
     const missing = chatIds.filter(id => !warm.byChat.has(id));
-    await inBatches(missing, 25, async id => { warm.byChat.set(id, await lastMessagesFor(tableId, id).catch(() => [])); });
+    await inBatches(missing, 60, async id => { warm.byChat.set(id, await lastMessagesFor(tableId, id).catch(() => [])); });
     warm.at = Date.now();
     paths.push(`msgs:+${newer.length} new-chats:${missing.length}`);
     return warm.byChat;
@@ -49,16 +49,20 @@ async function messagesForChats(tableId: string, chatIds: string[], paths: strin
   const top = await listRows(tableId, { limit: 1, sortBy: "id:desc" });
   const maxId = Number(top.rows[0]?.id) || 0;
   const byChat = new Map<string, Row[]>();
-  await inBatches(chatIds, 25, async id => { byChat.set(id, await lastMessagesFor(tableId, id).catch(() => [])); });
+  await inBatches(chatIds, 60, async id => { byChat.set(id, await lastMessagesFor(tableId, id).catch(() => [])); });
   chatCache = { byChat, maxId, at: Date.now() };
   paths.push(`msgs:cold chats=${chatIds.length}`);
   return byChat;
 }
 
 export async function GET(req: Request) {
-  if (!(await requireAdmin())) return jsonError("Unauthorized", 401);
-  const fresh = new URL(req.url).searchParams.get("fresh") === "1";
-  if (!fresh && cache && Date.now() - cache.at < 3000) return NextResponse.json(cache.body, { headers: privateJsonHeaders });
+  const url = new URL(req.url);
+  // ?warm=1 (no login): an n8n schedule calls this every few minutes so the server keeps the list ready
+  // and the app opens fast. It returns only a count, never user data.
+  const warmOnly = url.searchParams.get("warm") === "1";
+  if (!warmOnly && !(await requireAdmin())) return jsonError("Unauthorized", 401);
+  const fresh = url.searchParams.get("fresh") === "1";
+  if (!warmOnly && !fresh && cache && Date.now() - cache.at < 3000) return NextResponse.json(cache.body, { headers: privateJsonHeaders });
   const cfg = n8nConfig();
   const t0 = Date.now();
   const paths: string[] = [];
@@ -127,6 +131,7 @@ export async function GET(req: Request) {
     const cnt = (st: string) => users.filter(u => u.tradeStatus === st).length;
     console.log(`[tq] ${Date.now() - t0} ms fresh=${fresh} clients=${clientRows.length} messages=${msgCount} users=${users.length} tq=${cnt("")} done=${cnt("done")} notint=${cnt("not_interested")} payment=${cnt("payment_sent")} ${paths.join(" ")}`);
     cache = { at: Date.now(), body };
+    if (warmOnly) return NextResponse.json({ ok: true, users: users.length, ms: Date.now() - t0 }, { headers: privateJsonHeaders });
     return NextResponse.json(body, { headers: privateJsonHeaders });
   } catch (error) {
     console.log(`[tq] ERROR after ${Date.now() - t0} ms: ${error instanceof Error ? error.message : String(error)}`);
