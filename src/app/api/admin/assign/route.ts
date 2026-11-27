@@ -3,6 +3,7 @@ import { getSession, jsonError, privateJsonHeaders, sameName } from "@/lib/auth"
 import { IS_AISHA } from "@/lib/brand";
 import { n8nConfig, readRows, upsertByClientId, type Row } from "@/lib/n8n";
 import { toMillis } from "@/lib/mappers";
+import { patchAssigned } from "@/lib/admin-data";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,7 @@ export async function POST(req: Request) {
   for (let i = 0; i < plan.length; i += 15) {
     await Promise.all(plan.slice(i, i + 15).map(([r, to]) => upsertByClientId(cfg.tables.clients, String(r.client_id), { assigned_to: to }).then(() => ok++, () => failed++)));
   }
+  patchAssigned(new Map(plan.map(([r, to]) => [String(r.client_id), to])));
   const counts: Record<string, number> = {};
   for (const [, to] of plan) counts[to || "(koi nahi)"] = (counts[to || "(koi nahi)"] || 0) + 1;
   console.log(`[admin-assign] ${plan.length} users ok=${ok} failed=${failed} ${Date.now() - t0} ms ${JSON.stringify(counts)}`);

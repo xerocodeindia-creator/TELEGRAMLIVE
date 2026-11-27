@@ -14,7 +14,7 @@ export async function GET(req: Request) {
   const r = rangeFor(String(u.searchParams.get("range") || "today"), u.searchParams.get("from") || "", u.searchParams.get("to") || "");
   const t0 = Date.now();
   try {
-    const [{ clients, history }, members] = await Promise.all([loadData(r), listMembers()]);
+    const [{ clients, history }, members] = await Promise.all([loadData(r, u.searchParams.get("fresh") === "1"), listMembers()]);
     const acc = accounts(clients, r);
     const tr = trades(history, r);
     const byApp: Record<string, number> = { "Choice FinX": 0, "Angel One": 0, "Bajaj": 0 };

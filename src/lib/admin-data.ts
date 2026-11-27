@@ -20,28 +20,78 @@ export function rangeFor(key: string, from?: string, to?: string): Range {
 
 const APPS: [string, string][] = [["task_1_completed_at", "Angel One"], ["task_2_completed_at", "Choice FinX"], ["task_3_completed_at", "Bajaj"]];
 
-let rowsCache: { key: string; at: number; clients: Row[]; history: Row[] } | null = null;
+// Speed (28 Nov 2026): one shared data set covers every range button (this month + last 7 days), read in parallel
+// (one small query per day + per task/bonus column instead of ~14 pages one after another), kept 2 min, and refreshed
+// in the background (stale-while-revalidate + keep-warm ping), so Aaj / Kal / 7 din / Mahina open at once.
+type Data = { from: string; at: number; clients: Row[]; history: Row[] };
+let data: Data | null = null;
+let loadingP: Promise<Data> | null = null;
 
-export async function loadData(r: Range) {
-  const key = r.from + r.to;
-  if (rowsCache && rowsCache.key === key && Date.now() - rowsCache.at < 30000) return rowsCache;
+async function pool<T>(jobs: (() => Promise<T>)[], n: number): Promise<T[]> {
+  const out: T[] = new Array(jobs.length);
+  let i = 0;
+  await Promise.all(Array.from({ length: Math.min(n, jobs.length) }, async () => { while (i < jobs.length) { const k = i++; out[k] = await jobs[k](); } }));
+  return out;
+}
+
+async function readClients(from: string): Promise<Row[]> {
   const cfg = n8nConfig();
-  const startIso = new Date(dayStartUtc(r.from)).toISOString();
-  const filter = { type: "or", filters: [
-    ...APPS.map(([c]) => ({ columnName: c, condition: "gte", value: startIso })),
-    { columnName: "createdAt", condition: "gte", value: startIso },
-    { columnName: "bonus_status", condition: "isNotEmpty", value: null },
-    { columnName: "assigned_to", condition: "isNotEmpty", value: null },
-  ] };
+  const startIso = new Date(dayStartUtc(from)).toISOString();
+  const today = istDay(Date.now());
+  const filters: object[] = [];
+  for (let t = dayStartUtc(from); istDay(t) <= today; t += DAY) {
+    filters.push({ type: "and", filters: [
+      { columnName: "createdAt", condition: "gte", value: new Date(t).toISOString() },
+      { columnName: "createdAt", condition: "lt", value: new Date(t + DAY).toISOString() },
+    ] });
+  }
+  for (const [c] of APPS) filters.push({ type: "and", filters: [{ columnName: c, condition: "gte", value: startIso }] });
+  filters.push({ type: "and", filters: [{ columnName: "bonus_status", condition: "isNotEmpty", value: null }] });
+  filters.push({ type: "and", filters: [{ columnName: "assigned_to", condition: "isNotEmpty", value: null }] });
+  const parts = await pool(filters.map(f => () => readRows(cfg.tables.clients, { filter: f, max: 20000 })), 10);
+  const byId = new Map<string, Row>();
+  for (const rows of parts) for (const r of rows) byId.set(String(r.client_id ?? r.id), r);
+  return [...byId.values()];
+}
+
+async function readAll(from: string): Promise<Data> {
+  const t0 = Date.now();
   const months = new Set<string>();
-  for (let t = dayStartUtc(r.from); t <= dayStartUtc(r.to); t += DAY) months.add(istDay(t).slice(0, 7));
+  for (let t = dayStartUtc(from); t <= Date.now(); t += DAY) months.add(istDay(t).slice(0, 7));
   const histFilter = { type: "or", filters: [...months].map(m => ({ columnName: "month", condition: "eq", value: m })) };
   const [clients, history] = await Promise.all([
-    readRows(cfg.tables.clients, { filter, max: 20000 }),
+    readClients(from),
     readRows(TRADE_HISTORY_TABLE, { filter: histFilter, max: 20000 }).catch(() => [] as Row[]),
   ]);
-  rowsCache = { key, at: Date.now(), clients, history };
-  return rowsCache;
+  console.log(`[admin-data] read from ${from}: clients=${clients.length} history=${history.length} ${Date.now() - t0} ms`);
+  return { from, at: Date.now(), clients, history };
+}
+
+/** Earliest day any range button needs: start of this month or 6 days ago, whichever is earlier. */
+const coverFrom = () => { const m = rangeFor("month").from, w = rangeFor("7d").from; return m < w ? m : w; };
+
+function refresh(from: string) {
+  if (!loadingP) loadingP = readAll(from).then(d => { data = d; return d; }).finally(() => { loadingP = null; });
+  return loadingP;
+}
+
+/** After the admin gives users to members: change the kept copy too, so the dashboard shows it at once. */
+export function patchAssigned(changes: Map<string, string>) {
+  if (!data) return;
+  for (const r of data.clients) { const id = String(r.client_id ?? ""); if (changes.has(id)) r.assigned_to = changes.get(id); }
+}
+
+/** Warm the shared data in the background (keep-warm ping). */
+export function warmAdmin() { if (!data || Date.now() - data.at > 90000) return refresh(coverFrom()).then(() => undefined); return Promise.resolve(); }
+
+export async function loadData(r: Range, fresh = false): Promise<{ clients: Row[]; history: Row[] }> {
+  const need = r.from < coverFrom() ? r.from : coverFrom();
+  if (fresh) return refresh(data && data.from < need ? data.from : need);
+  if (data && data.from <= need) {
+    if (Date.now() - data.at > 120000) refresh(data.from).catch(() => undefined); // answer now, update in background
+    return data;
+  }
+  return refresh(need);
 }
 
 export const inRange = (t: number, r: Range) => { if (!t) return false; const d = istDay(t); return d >= r.from && d <= r.to; };

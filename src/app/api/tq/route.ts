@@ -1,6 +1,8 @@
+import { waitUntil } from "@vercel/functions";
 import { NextResponse } from "next/server";
 import { requireAdmin, jsonError, privateJsonHeaders, getSession, sameName, type Session } from "@/lib/auth";
 import { listMembers } from "@/lib/team";
+import { warmAdmin } from "@/lib/admin-data";
 import { n8nConfig, readRows, listRows, type Row } from "@/lib/n8n";
 import { toMillis, mapMessage } from "@/lib/mappers";
 import { IS_AISHA } from "@/lib/brand";
@@ -77,6 +79,8 @@ export async function GET(req: Request) {
   const warmOnly = url.searchParams.get("warm") === "1";
   if (!warmOnly && !(await requireAdmin())) return jsonError("Unauthorized", 401);
   const fresh = url.searchParams.get("fresh") === "1";
+  // Keep-warm ping also keeps the admin dashboard numbers ready (Ashish Team only).
+  if (warmOnly && !IS_AISHA) waitUntil(warmAdmin().catch(() => undefined));
   const session = warmOnly ? null : await getSession();
   if (!warmOnly && !fresh && cache && Date.now() - cache.at < 3000) return NextResponse.json(await viewFor(cache.body, session), { headers: privateJsonHeaders });
   const cfg = n8nConfig();
