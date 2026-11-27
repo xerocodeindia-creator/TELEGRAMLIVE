@@ -162,6 +162,11 @@ public class AdminActivity extends Activity {
         actions.addView(excel, a1);
         actions.addView(split, new LinearLayout.LayoutParams(0, -2, 1));
         body.addView(actions);
+        TextView bonus = pill("📣 Bonus message bhejo (numbers paste karo)", 0xFFB7791F);
+        bonus.setGravity(Gravity.CENTER);
+        bonus.setOnClickListener(v -> bonusDialog(""));
+        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(-1, -2); blp.topMargin = dp(8);
+        body.addView(bonus, blp);
 
         section("Team members");
         JSONArray ms = j.optJSONArray("members");
@@ -334,6 +339,106 @@ public class AdminActivity extends Activity {
                 load();
             }
             public void fail(Exception e) { status.setText(""); Toast.makeText(AdminActivity.this, "Nahi hua: " + e.getMessage(), Toast.LENGTH_LONG).show(); }
+        });
+    }
+
+    // ---------- Bonus campaign (28 Nov 2026) ----------
+    // Paste numbers → Check (dry run, nothing sent) → optional test to admin → Pakka? → Bhejo. Report comes on Telegram.
+
+    private String bonusMode = "step1";
+
+    private void bonusDialog(String prefill) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(20), dp(8), dp(20), 0);
+        EditText et = new EditText(this);
+        et.setHint("Numbers yahan paste karo (91 ke saath ya bina, ek line mein ek)");
+        et.setMinLines(5);
+        et.setMaxLines(10);
+        et.setGravity(Gravity.TOP);
+        et.setText(prefill);
+        box.addView(et, new LinearLayout.LayoutParams(-1, -2));
+        android.widget.RadioGroup rg = new android.widget.RadioGroup(this);
+        android.widget.RadioButton r1 = new android.widget.RadioButton(this); r1.setId(1); r1.setText("Bonus Ready (naya message)");
+        android.widget.RadioButton r2 = new android.widget.RadioButton(this); r2.setId(2); r2.setText("Follow-up (jinhe pehle bheja tha)");
+        rg.addView(r1); rg.addView(r2);
+        rg.check(bonusMode.equals("followup") ? 2 : 1);
+        box.addView(rg);
+        new AlertDialog.Builder(this).setTitle("📣 Bonus message").setView(box)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Check karo", (d, w) -> {
+                bonusMode = rg.getCheckedRadioButtonId() == 2 ? "followup" : "step1";
+                bonusDry(et.getText().toString());
+            }).show();
+    }
+
+    private void bonusDry(String numbers) {
+        status.setText("Numbers check ho rahe hain… (kuch bheja nahi ja raha)");
+        Api.post(this, "/api/admin/bonus", json("numbers", numbers, "mode", bonusMode, "step", "dry"), new Api.Done<JSONObject>() {
+            public void ok(JSONObject j) {
+                status.setText("");
+                int will = j.optInt("willSend");
+                JSONArray nf = j.optJSONArray("notFound"), sk = j.optJSONArray("skipped"), list = j.optJSONArray("list");
+                StringBuilder sb = new StringBuilder();
+                sb.append("Paste kiye: ").append(j.optInt("parsed")).append(" numbers\n");
+                sb.append("✅ Jayega: ").append(will).append("\n");
+                sb.append("⏭ Skip: ").append(sk == null ? 0 : sk.length()).append("\n");
+                sb.append("❓ Bot mein nahi mile: ").append(nf == null ? 0 : nf.length()).append("\n");
+                if (list != null && list.length() > 0) {
+                    sb.append("\nJinko jayega:\n");
+                    for (int i = 0; i < Math.min(list.length(), 30); i++) { JSONObject o = list.optJSONObject(i); sb.append("• ").append(o.optString("name")).append(" (..").append(o.optString("last4")).append(")\n"); }
+                    if (list.length() > 30) sb.append("… aur ").append(list.length() - 30).append("\n");
+                }
+                if (sk != null && sk.length() > 0) {
+                    sb.append("\nSkip (kyon):\n");
+                    for (int i = 0; i < Math.min(sk.length(), 15); i++) { JSONObject o = sk.optJSONObject(i); sb.append("• ").append(o.optString("name")).append(" (..").append(o.optString("last4")).append(") — ").append(o.optString("why")).append("\n"); }
+                    if (sk.length() > 15) sb.append("… aur ").append(sk.length() - 15).append("\n");
+                }
+                if (nf != null && nf.length() > 0) {
+                    sb.append("\nNahi mile:\n");
+                    for (int i = 0; i < Math.min(nf.length(), 20); i++) sb.append(nf.optString(i)).append(i < Math.min(nf.length(), 20) - 1 ? ", " : "\n");
+                    if (nf.length() > 20) sb.append("… aur ").append(nf.length() - 20).append("\n");
+                }
+                TextView tv = Ui.text(AdminActivity.this, sb.toString(), 14, Ui.TEXT, false);
+                tv.setPadding(dp(20), dp(10), dp(20), dp(4));
+                tv.setTextIsSelectable(true);
+                ScrollView sv = new ScrollView(AdminActivity.this);
+                sv.addView(tv);
+                AlertDialog.Builder ab = new AlertDialog.Builder(AdminActivity.this).setTitle("Dry run — abhi kuch nahi gaya").setView(sv)
+                    .setNegativeButton("Cancel", null)
+                    .setNeutralButton("Mujhe test", (d, w) -> bonusTest(numbers));
+                if (will > 0) ab.setPositiveButton("Bhejo (" + will + ")", (d, w) -> new AlertDialog.Builder(AdminActivity.this).setTitle("Pakka bhejna hai?")
+                    .setMessage(will + " users ko Telegram pe message jayega. Wapas nahi hoga.")
+                    .setNegativeButton("Nahi", null)
+                    .setPositiveButton("Haan, bhejo", (d2, w2) -> bonusSend(numbers, will)).show());
+                ab.show();
+            }
+            public void fail(Exception e) { status.setText(""); Toast.makeText(AdminActivity.this, "Check nahi hua: " + e.getMessage(), Toast.LENGTH_LONG).show(); }
+        });
+    }
+
+    private void bonusTest(String numbers) {
+        Api.post(this, "/api/admin/bonus", json("mode", bonusMode, "step", "test"), new Api.Done<JSONObject>() {
+            public void ok(JSONObject j) {
+                Toast.makeText(AdminActivity.this, j.optBoolean("ok") ? "Test message aapke Telegram pe gaya ✓" : "Test nahi gaya", Toast.LENGTH_LONG).show();
+                bonusDialog(numbers);
+            }
+            public void fail(Exception e) { Toast.makeText(AdminActivity.this, "Test nahi gaya: " + e.getMessage(), Toast.LENGTH_LONG).show(); }
+        });
+    }
+
+    private void bonusSend(String numbers, int will) {
+        status.setText("Bhejna shuru ho raha hai…");
+        Api.post(this, "/api/admin/bonus", json("numbers", numbers, "mode", bonusMode, "step", "send"), new Api.Done<JSONObject>() {
+            public void ok(JSONObject j) {
+                status.setText("");
+                new AlertDialog.Builder(AdminActivity.this).setTitle("📣 Bhejna shuru ✓")
+                    .setMessage(will + " users ko message ja raha hai. 1–3 minute mein poori report aapke Telegram pe aayegi.\n\nYe users app mein Activate list mein aa jayenge — phir 👥 Users baanto se team ko de do.")
+                    .setPositiveButton("OK", null).show();
+                Api.needFresh = true;
+                Api.MAIN.postDelayed(() -> load(), 60000);
+            }
+            public void fail(Exception e) { status.setText(""); Toast.makeText(AdminActivity.this, "Nahi gaya: " + e.getMessage(), Toast.LENGTH_LONG).show(); }
         });
     }
 

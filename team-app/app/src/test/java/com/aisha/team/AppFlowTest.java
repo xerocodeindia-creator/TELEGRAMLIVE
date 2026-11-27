@@ -506,6 +506,26 @@ public class AppFlowTest {
         JSONObject call = server.assignCalls.get(0);
         assertEquals("unassigned", call.getString("scope"));
         assertEquals(2, call.getJSONArray("members").length());
+        // Bonus message: paste → Check (dry) → Bhejo → Pakka → send
+        findText(ar, "📣 Bonus message bhejo").performClick();
+        AlertDialog b1 = (AlertDialog) ShadowAlertDialog.getLatestDialog();
+        EditText nums = null; for (TextView t : texts(b1.getWindow().getDecorView())) if (t instanceof EditText) nums = (EditText) t;
+        nums.setText("+91 98765 11111\n9876522222, 919876533333");
+        b1.getButton(AlertDialog.BUTTON_POSITIVE).performClick();
+        waitFor("dry run called", () -> server.bonusCalls.size() == 1);
+        assertEquals("dry", server.bonusCalls.get(0).getString("step"));
+        assertEquals("step1", server.bonusCalls.get(0).getString("mode"));
+        waitFor("dry result shown", () -> ShadowAlertDialog.getLatestDialog() != b1);
+        AlertDialog b2 = (AlertDialog) ShadowAlertDialog.getLatestDialog();
+        assertEquals("Bhejo (2)", b2.getButton(AlertDialog.BUTTON_POSITIVE).getText().toString());
+        assertTrue(server.bonusCalls.size() == 1); // nothing sent yet
+        b2.getButton(AlertDialog.BUTTON_POSITIVE).performClick();
+        shadowOf(android.os.Looper.getMainLooper()).idle();
+        AlertDialog b3 = (AlertDialog) ShadowAlertDialog.getLatestDialog();
+        b3.getButton(AlertDialog.BUTTON_POSITIVE).performClick();
+        waitFor("send called", () -> server.bonusCalls.size() == 2);
+        assertEquals("send", server.bonusCalls.get(1).getString("step"));
+        assertTrue(server.bonusCalls.get(1).getString("numbers").contains("98765 11111"));
         ac.pause().stop().destroy();
     }
 }

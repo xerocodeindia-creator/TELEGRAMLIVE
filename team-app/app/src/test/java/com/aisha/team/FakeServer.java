@@ -28,6 +28,7 @@ class FakeServer {
     volatile JSONObject lastAuth;
     final java.util.Set<String> locked = java.util.Collections.synchronizedSet(new java.util.HashSet<>());
     volatile int target = 0;
+    final List<JSONObject> bonusCalls = java.util.Collections.synchronizedList(new ArrayList<>());
     final List<JSONObject> assignCalls = java.util.Collections.synchronizedList(new ArrayList<>());
     final MockWebServer http = new MockWebServer();
     final List<String> log = Collections.synchronizedList(new ArrayList<>());
@@ -112,6 +113,15 @@ class FakeServer {
                             .put(new JSONObject().put("name", "Rahul").put("assigned", 30).put("payment", 2).put("done", 2).put("notInt", 0).put("target", 5).put("todayDone", 2))
                             .put(new JSONObject().put("name", "Ashu").put("assigned", 30).put("payment", 2).put("done", 1).put("notInt", 1).put("target", 0).put("todayDone", 1)));
                     return send(200, st);
+                }
+                case "/api/admin/bonus": {
+                    JSONObject b = new JSONObject(body); bonusCalls.add(b);
+                    if (b.optString("step").equals("dry")) return send(200, new JSONObject().put("parsed", 3).put("willSend", 2)
+                        .put("list", new JSONArray().put(new JSONObject().put("name", "Ravi").put("last4", "1111")).put(new JSONObject().put("name", "Anu").put("last4", "2222")))
+                        .put("skipped", new JSONArray().put(new JSONObject().put("name", "Old").put("last4", "3333").put("why", "pehle se campaign mein")))
+                        .put("notFound", new JSONArray()));
+                    if (b.optString("step").equals("test")) return send(200, new JSONObject().put("ok", true).put("sent", 1));
+                    return send(200, new JSONObject().put("started", true).put("numbers", 3));
                 }
                 case "/api/admin/assign": assignCalls.add(new JSONObject(body)); return send(200, new JSONObject().put("changed", 30).put("failed", 0).put("counts", new JSONObject().put("Rahul", 15).put("Ashu", 15)));
                 case "/api/manual-reply": sentTexts.add(new JSONObject(body)); return send(200, new JSONObject().put("sent", true));
