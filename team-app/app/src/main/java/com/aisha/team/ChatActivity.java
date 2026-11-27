@@ -40,6 +40,9 @@ public class ChatActivity extends Activity {
     private static final int PICK_PAYMENT = 8;
     private String tradeCampaign = "";
     private JSONObject paymentTemplate; // campaign chosen for the current "Payment bheja"
+    /** Name of the "no status yet" list: Ashish Team calls it Activate (bonus users), Team Dhruv Trade Qualified. */
+    static final String LIST = BuildConfig.IS_AAROHI ? "Activate" : "Trade Qualified";
+
     static class Msg { long id; String dir, text, fileId, status; long time; boolean dayLabel, pending, photo; long keepUntil; }
 
     private String chatId, name, tradeStatus, tradeBy;
@@ -179,9 +182,9 @@ public class ChatActivity extends Activity {
             if (tradeStatus.equals("payment_sent")) {
                 row.addView(actionButton("✅ Done", Ui.GREEN, () -> confirmStatus("done")), cell);
                 row.addView(actionButton("🚫 Not int", 0xFFB84A4A, () -> confirmStatus("not_interested")), cell);
-                row.addView(actionButton("↩ TQ", Ui.OUT, () -> confirmStatus("")), last);
+                row.addView(actionButton(BuildConfig.IS_AAROHI ? "↩ Activate" : "↩ TQ", Ui.OUT, () -> confirmStatus("")), last);
             } else {
-                row.addView(actionButton("↩ Wapas TQ mein", Ui.OUT, () -> confirmStatus("")), new LinearLayout.LayoutParams(-1, -2));
+                row.addView(actionButton(BuildConfig.IS_AAROHI ? "↩ Wapas Activate mein" : "↩ Wapas TQ mein", Ui.OUT, () -> confirmStatus("")), new LinearLayout.LayoutParams(-1, -2));
             }
         }
         actions.addView(row);
@@ -262,9 +265,9 @@ public class ChatActivity extends Activity {
     }
 
     private void confirmStatus(String status) {
-        String msg = status.equals("done") ? name + " ka trade ho gaya? User Trade Qualified se hat kar Trade Done mein chala jayega."
-            : status.equals("not_interested") ? name + " trade mein interested nahi hai? User Trade Qualified se hat kar Not Interested mein chala jayega."
-            : name + " ko wapas Trade Qualified list mein daalein?";
+        String msg = status.equals("done") ? name + " ka trade ho gaya? User " + LIST + " se hat kar Trade Done mein chala jayega."
+            : status.equals("not_interested") ? name + " trade mein interested nahi hai? User " + LIST + " se hat kar Not Interested mein chala jayega."
+            : name + " ko wapas " + LIST + " list mein daalein?";
         new AlertDialog.Builder(this).setMessage(msg).setNegativeButton("Cancel", null).setPositiveButton("Haan", (d, w) -> saveStatus(status)).show();
     }
 
@@ -278,7 +281,7 @@ public class ChatActivity extends Activity {
                     Api.needFresh = true;
                     renderActions();
                     if (status.isEmpty()) tradeCampaign = "";
-                    Toast.makeText(ChatActivity.this, status.equals("done") ? "Trade Done mein daal diya ✓" : status.equals("not_interested") ? "Not Interested mein daal diya ✓" : "Wapas Trade Qualified mein ✓", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(ChatActivity.this, status.equals("done") ? "Trade Done mein daal diya ✓" : status.equals("not_interested") ? "Not Interested mein daal diya ✓" : "Wapas " + LIST + " mein ✓", Toast.LENGTH_SHORT).show();
                 }
                 public void fail(Exception e) {
                     actions.setAlpha(1f);

@@ -43,6 +43,7 @@ class FakeServer {
         tradeStatus.put("111", "");          // Ravi (unread, bonus step2, today)
         tradeStatus.put("222", "");          // Anu (HDFC, 2 days ago)
         tradeStatus.put("333", "not_interested"); // Old (not interested)
+        tradeStatus.put("444", "");          // Plain (TQ, no bonus)
     }
 
     String base() { return "http://127.0.0.1:" + http.getPort(); }
@@ -76,9 +77,10 @@ class FakeServer {
                 case "/api/tq": {
                     JSONArray users = new JSONArray();
                     users.put(user("111", "Ravi", "Choice", "step2", 2, now - 60000, "UPI: ravi@ybl", "in"));
-                    users.put(user("7581773680", "Sofiya", "Choice,Bajaj", "", 0, now - 3600000, "Ok", "admin"));
+                    users.put(user("7581773680", "Sofiya", "Choice,Bajaj", "step1", 0, now - 3600000, "Ok", "admin"));
                     users.put(user("222", "Anu", "HDFC", "step1", 0, now - 26 * 3600000L, "Apka Bonus Ready Hai", "bot"));
-                    users.put(user("333", "Old", "Choice", "", 0, now - 86400000L, "nahi", "in"));
+                    users.put(user("333", "Old", "Choice", "step1", 0, now - 86400000L, "nahi", "in"));
+                    if (BuildConfig.IS_AAROHI) users.put(user("444", "Plain", "Choice", "", 0, now - 7200000L, "hi", "in")); // TQ without bonus: must be hidden in Ashish Team
                     return send(200, new JSONObject().put("users", users));
                 }
                 case "/api/messages": {

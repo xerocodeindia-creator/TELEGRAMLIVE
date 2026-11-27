@@ -120,15 +120,21 @@ public class AppFlowTest {
         waitFor("list loaded", () -> lv.getAdapter().getCount() > 0);
         assertTrue(server.log.toString(), server.log.contains("GET /api/tq"));
         // TQ tab: Ravi, Sofiya, Anu (Old is not interested)
-        assertEquals(List.of("Ravi", "Sofiya", "Anu"), rowNames(lv));
-        assertNotNull("tab counts", findText(root, "TQ  3"));
+        if (BuildConfig.IS_AAROHI) {
+            // Ashish Team: bonus-campaign users only (Plain has no bonus), first tab is "Activate"
+            assertEquals(List.of("Ravi", "Sofiya", "Anu"), rowNames(lv));
+            assertNotNull("tab counts", findText(root, "🚀 Activate  3"));
+        } else {
+            assertEquals(List.of("Ravi", "Sofiya", "Anu"), rowNames(lv));
+            assertNotNull("tab counts", findText(root, "TQ  3"));
+        }
         assertNotNull(findText(root, "Done  0"));
         assertNotNull(findText(root, "Not Int  1"));
         assertNotNull(findText(root, "Payment  0"));
         // Not Int tab
         findText(root, "Not Int").performClick();
         assertEquals(List.of("Old"), rowNames(lv));
-        findText(root, "TQ").performClick();
+        findText(root, BuildConfig.IS_AAROHI ? "🚀 Activate" : "TQ").performClick();
         // Filter dialog: Unread
         findText(root, "Filter").performClick();
         AlertDialog d = (AlertDialog) ShadowAlertDialog.getLatestDialog();
@@ -197,7 +203,7 @@ public class AppFlowTest {
         assertEquals("7581773680", call.getString("chatId"));
         assertEquals("done", call.getString("status"));
         assertEquals("Rahul", call.getString("by"));
-        waitFor("undo button shown", () -> findText(root, "↩ Wapas TQ mein") != null);
+        waitFor("undo button shown", () -> findText(root, BuildConfig.IS_AAROHI ? "↩ Wapas Activate mein" : "↩ Wapas TQ mein") != null);
         assertNotNull(findText(root, "✅ Trade done · Rahul"));
         cc.pause().stop().destroy();
 
@@ -218,7 +224,7 @@ public class AppFlowTest {
         Intent in2 = new Intent(in).putExtra("tradeStatus", "done").putExtra("tradeBy", "Rahul");
         ActivityController<ChatActivity> cc2 = Robolectric.buildActivity(ChatActivity.class, in2).setup();
         View r2 = cc2.get().getWindow().getDecorView();
-        findText(r2, "↩ Wapas TQ mein").performClick();
+        findText(r2, BuildConfig.IS_AAROHI ? "↩ Wapas Activate mein" : "↩ Wapas TQ mein").performClick();
         ((AlertDialog) ShadowAlertDialog.getLatestDialog()).getButton(AlertDialog.BUTTON_POSITIVE).performClick();
         waitFor("undo saved", () -> server.statusCalls.size() == 2);
         assertEquals("", server.statusCalls.get(1).getString("status"));

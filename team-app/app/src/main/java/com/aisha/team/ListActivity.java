@@ -37,12 +37,16 @@ public class ListActivity extends Activity {
     private boolean loading;
     // Filter chips: key → label. "all" clears the filter.
     private static final String[][] FILTERS = BuildConfig.IS_AAROHI
-        ? new String[][] { {"all", "Sab"}, {"unread", "Unread"}, {"bonus1", "Bonus 1"}, {"bonus2", "Bonus 2"}, {"angel", "Angel One"}, {"choice", "Choice FinX"}, {"bajaj", "Bajaj"} }
+        ? new String[][] { {"all", "Sab"}, {"unread", "Unread"}, {"bonus1", "Reply nahi"}, {"bonus2", "Reply aaya"}, {"angel", "Angel One"}, {"choice", "Choice FinX"}, {"bajaj", "Bajaj"} }
         : new String[][] { {"all", "Sab"}, {"unread", "Unread"}, {"bonus1", "Bonus 1"}, {"bonus2", "Bonus 2"}, {"choice", "Choice"}, {"hdfc", "HDFC"}, {"bajaj", "Bajaj"} };
     private String filterKey = "all";
     private final List<TextView> chips = new ArrayList<>();
     // Tabs: Trade Qualified (no status) / Trade Done / Trade Not Interested.
-    private static final String[][] TABS = { {"", "TQ"}, {"payment_sent", "Payment"}, {"done", "Done"}, {"not_interested", "Not Int"} };
+    // Ashish Team (27 Nov 2026): only bonus-campaign users; first tab "Activate" (no status yet) instead of TQ.
+    // The website dashboard still shows the full Trade Qualified list.
+    private static final String[][] TABS = BuildConfig.IS_AAROHI
+        ? new String[][] { {"", "🚀 Activate"}, {"payment_sent", "Payment"}, {"done", "Done"}, {"not_interested", "Not Int"} }
+        : new String[][] { {"", "TQ"}, {"payment_sent", "Payment"}, {"done", "Done"}, {"not_interested", "Not Int"} };
     private String tab = "";
     private final List<TextView> tabViews = new ArrayList<>();
     // Date filter on the last message (IST day).
@@ -190,6 +194,7 @@ public class ListActivity extends Activity {
                     for (int k = 0; apps != null && k < apps.length(); k++) a.add(apps.optString(k));
                     u.apps = TextUtils.join(" · ", a);
                     u.bonus = o.optString("bonus");
+                    if (BuildConfig.IS_AAROHI && u.bonus.isEmpty()) continue; // Ashish Team: bonus-campaign users only
                     u.unread = o.optInt("unread");
                     u.lastTime = o.optLong("lastTime");
                     JSONObject last = o.optJSONObject("last");
@@ -320,7 +325,7 @@ public class ListActivity extends Activity {
         List<User> base = new ArrayList<>();
         for (User u : all) if (tab.equals(u.tradeStatus) && inDate(u, dateKey)) base.add(u);
         int unread = 0; for (User u : base) if (u.unread > 0) unread++;
-        String tabName = tab.isEmpty() ? "Trade Qualified" : tab.equals("payment_sent") ? "Payment bheja" : tab.equals("done") ? "Trade Done" : "Trade Not Interested";
+        String tabName = tab.isEmpty() ? (BuildConfig.IS_AAROHI ? "Activate — bonus users (funds bhejne wale)" : "Trade Qualified") : tab.equals("payment_sent") ? "Payment bheja" : tab.equals("done") ? "Trade Done" : "Trade Not Interested";
         header.setText(tabName);
         currentBase = base;
         for (User u : base) {
@@ -369,7 +374,7 @@ public class ListActivity extends Activity {
                 h.preview.setText(Ui.statusLabel(u.tradeStatus, u.tradeCampaign) + (u.tradeBy.isEmpty() ? "" : " · " + u.tradeBy) + (u.tradeAt > 0 ? " · " + Ui.listTime(u.tradeAt) : ""));
             else h.preview.setText(u.preview);
             String tags = u.apps;
-            if (!u.bonus.isEmpty()) tags = (tags.isEmpty() ? "" : tags + " · ") + "Bonus " + (u.bonus.equals("step2") ? "2" : "1");
+            if (!u.bonus.isEmpty()) tags = (tags.isEmpty() ? "" : tags + " · ") + (BuildConfig.IS_AAROHI ? (u.bonus.equals("step2") ? "Reply aaya" : "Reply nahi") : "Bonus " + (u.bonus.equals("step2") ? "2" : "1"));
             h.tags.setText(tags);
             h.badge.setVisibility(u.unread > 0 ? View.VISIBLE : View.GONE);
             h.badge.setText(u.unread > 99 ? "99+" : String.valueOf(u.unread));
