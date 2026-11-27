@@ -13,11 +13,15 @@ export async function GET(req: Request) {
   if (!/^\d{1,24}$/.test(chatId)) return jsonError("Invalid Telegram chat ID");
   const cfg = n8nConfig();
   if (!cfg.configured) return jsonError("n8n API is not configured on the server.", 503);
+  const t0 = Date.now();
+  const lim = Math.min(3000, Math.max(20, Number(new URL(req.url).searchParams.get("limit")) || 150));
   try {
     let rows;
     try {
+      // 27 Nov 2026: newest 150 messages only (one request) instead of the whole history.
       rows = await readRows(cfg.tables.messages, {
-        max: 3000,
+        max: lim,
+        pageSize: Math.min(lim, 250),
         filter: { type: "and", filters: [{ columnName: "chat_id", condition: "eq", value: chatId }] },
       });
     } catch {
@@ -25,6 +29,7 @@ export async function GET(req: Request) {
       rows = (await readRows(cfg.tables.messages, { max: 20000 })).filter(r => String(r.chat_id ?? r.user_id ?? "").trim() === chatId);
     }
     const messages = rows.map(mapMessage).filter(m => m.chatId === chatId).sort(msgCmp);
+    console.log(`[messages] ${chatId} ${Date.now() - t0} ms rows=${messages.length}`);
     return NextResponse.json({ chatId, messages }, { headers: privateJsonHeaders });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Could not load chat history." }, { status: 502, headers: privateJsonHeaders });

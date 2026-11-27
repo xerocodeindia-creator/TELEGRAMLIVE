@@ -40,7 +40,7 @@ public class ChatActivity extends Activity {
     private static final int PICK_PAYMENT = 8;
     private String tradeCampaign = "";
     private JSONObject paymentTemplate; // campaign chosen for the current "Payment bheja"
-    static class Msg { long id; String dir, text, fileId, status; long time; boolean dayLabel, pending; }
+    static class Msg { long id; String dir, text, fileId, status; long time; boolean dayLabel, pending, photo; long keepUntil; }
 
     private String chatId, name, tradeStatus, tradeBy;
     private long tradeAt;
@@ -135,6 +135,9 @@ public class ChatActivity extends Activity {
         sendBtn.setOnClickListener(v -> sendText());
         root.addView(bar);
         setContentView(root);
+        // Chat opened before: show it at once, the live history replaces it a moment later.
+        JSONObject cached = Api.chatCache.get(chatId);
+        if (cached != null) { applyMsgs(cached); list.setSelection(Math.max(0, items.size() - 1)); }
     }
 
     @Override protected void onResume() { super.onResume(); Api.MAIN.removeCallbacks(tick); tick.run(); }
@@ -237,6 +240,7 @@ public class ChatActivity extends Activity {
                     Api.needFresh = true;
                     Api.lastSent.put(chatId, new Object[]{ System.currentTimeMillis(), "💰 Payment screenshot" });
                     renderActions();
+                    markPhotoSent();
                     lastSig = -1; load();
                     Toast.makeText(ChatActivity.this, j.optBoolean("textSent", true) ? "Payment bhej diya, user Payment tab mein ✓" : "Screenshot gaya, par message nahi gaya — chat se bhej do", Toast.LENGTH_LONG).show();
                 }
@@ -284,6 +288,17 @@ public class ChatActivity extends Activity {
         Api.get(this, "/api/messages?chatId=" + Api.enc(chatId), new Api.Done<JSONObject>() {
             public void ok(JSONObject j) {
                 loading = false;
+                Api.chatCache.put(chatId, j);
+                applyMsgs(j);
+            }
+            public void fail(Exception e) {
+                loading = false;
+                if (e instanceof Api.Unauthorized) { startActivity(new Intent(ChatActivity.this, LoginActivity.class)); finish(); }
+            }
+        });
+    }
+
+    private void applyMsgs(JSONObject j) {
                 JSONArray arr = j.optJSONArray("messages");
                 List<Msg> fresh = new ArrayList<>();
                 long sig = 0;
@@ -299,20 +314,34 @@ public class ChatActivity extends Activity {
                     fresh.add(m);
                 }
                 sig = sig * 31 + fresh.size();
-                if (sig == lastSig) return;
+                boolean anyPending = false; for (Msg m : items) if (m.keepUntil != 0) { anyPending = true; break; }
+                if (sig == lastSig && !anyPending) return;
                 lastSig = sig;
+                // Keep messages sent from this phone at the bottom until the server history has them
+                // (history is saved a moment after the send), at most 30 s after sending.
+                long now = System.currentTimeMillis();
+                for (Msg m : items) {
+                    if (m.dayLabel || m.keepUntil == 0) continue;
+                    if (!m.pending && now > m.keepUntil) continue;
+                    boolean onServer = false;
+                    if (!m.pending) for (Msg f : fresh) {
+                        if (f.dayLabel || "in".equals(f.dir) || f.time < m.time - 60000) continue;
+                        if (m.photo ? (f.fileId != null && !f.fileId.isEmpty()) : m.text.equals(f.text)) { onServer = true; break; }
+                    }
+                    if (!onServer) fresh.add(m);
+                }
                 items.clear(); items.addAll(fresh);
                 adapter.notifyDataSetChanged();
-            }
-            public void fail(Exception e) {
-                loading = false;
-                if (e instanceof Api.Unauthorized) { startActivity(new Intent(ChatActivity.this, LoginActivity.class)); finish(); }
-            }
-        });
     }
 
+
+    /** A photo / payment placeholder was accepted by the server: show it as sent until the history has the photo. */
+    private void markPhotoSent() {
+        for (Msg m : items) if (m.pending && m.text != null && (m.text.startsWith("📷") || m.text.startsWith("💰"))) { m.pending = false; m.photo = true; m.keepUntil = System.currentTimeMillis() + 30000; }
+        adapter.notifyDataSetChanged();
+    }
     private void addPending(String text) {
-        Msg m = new Msg(); m.dir = "admin"; m.text = text; m.pending = true; m.time = System.currentTimeMillis(); m.fileId = "";
+        Msg m = new Msg(); m.dir = "admin"; m.text = text; m.pending = true; m.time = System.currentTimeMillis(); m.fileId = ""; m.keepUntil = Long.MAX_VALUE;
         items.add(m); adapter.notifyDataSetChanged(); list.setSelection(items.size() - 1);
     }
 
@@ -324,7 +353,15 @@ public class ChatActivity extends Activity {
         input.setText("");
         try {
             Api.post(this, "/api/manual-reply", new JSONObject().put("chatId", chatId).put("text", text), new Api.Done<JSONObject>() {
-                public void ok(JSONObject j) { sendBtn.setEnabled(true); Api.lastSent.put(chatId, new Object[]{ System.currentTimeMillis(), text }); Api.needFresh = true; lastSig = -1; load(); }
+                public void ok(JSONObject j) {
+                    sendBtn.setEnabled(true);
+                    Api.lastSent.put(chatId, new Object[]{ System.currentTimeMillis(), text });
+                    Api.needFresh = true;
+                    // Sent: show it as sent straight away (no "bhej rahe…" while the history reloads).
+                    for (int i = items.size() - 1; i >= 0; i--) { Msg m = items.get(i); if (m.pending && text.equals(m.text)) { m.pending = false; m.status = "sent"; m.keepUntil = System.currentTimeMillis() + 30000; break; } }
+                    adapter.notifyDataSetChanged();
+                    lastSig = -1; load();
+                }
                 public void fail(Exception e) {
                     sendBtn.setEnabled(true);
                     items.remove(items.size() - 1); adapter.notifyDataSetChanged();
@@ -386,7 +423,7 @@ public class ChatActivity extends Activity {
                 addPending("📷 Photo bhej rahe…" + (caption.isEmpty() ? "" : "\n" + caption));
                 try {
                     Api.post(this, "/api/send-photo", new JSONObject().put("chatId", chatId).put("imageBase64", b64).put("mimeType", "image/jpeg").put("caption", caption), new Api.Done<JSONObject>() {
-                        public void ok(JSONObject j) { Api.lastSent.put(chatId, new Object[]{ System.currentTimeMillis(), "📷 Photo" }); Api.needFresh = true; lastSig = -1; load(); }
+                        public void ok(JSONObject j) { Api.lastSent.put(chatId, new Object[]{ System.currentTimeMillis(), "📷 Photo" }); Api.needFresh = true; markPhotoSent(); lastSig = -1; load(); }
                         public void fail(Exception e) {
                             items.remove(items.size() - 1); adapter.notifyDataSetChanged();
                             Toast.makeText(ChatActivity.this, "Photo nahi gayi: " + e.getMessage(), Toast.LENGTH_LONG).show();

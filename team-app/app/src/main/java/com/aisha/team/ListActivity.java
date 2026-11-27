@@ -140,6 +140,8 @@ public class ListActivity extends Activity {
         });
         root.addView(list, new LinearLayout.LayoutParams(-1, 0, 1));
         setContentView(root);
+        // Show the last saved list at once; the live list replaces it a moment later.
+        try { String c = Api.cachedList(this); if (!c.isEmpty()) apply(new JSONObject(c)); } catch (Exception ignored) { }
         filter();
         if (Api.memberName(this).isEmpty()) askMemberName();
     }
@@ -165,6 +167,18 @@ public class ListActivity extends Activity {
         Api.get(this, path, new Api.Done<JSONObject>() {
             public void ok(JSONObject j) {
                 loading = false;
+                Api.saveList(ListActivity.this, j.toString());
+                apply(j);
+            }
+            public void fail(Exception e) {
+                loading = false;
+                if (e instanceof Api.Unauthorized) { startActivity(new Intent(ListActivity.this, LoginActivity.class)); finish(); return; }
+                status.setText("Load nahi hua: " + e.getMessage() + " — dobara try ho raha hai");
+            }
+        });
+    }
+
+    private void apply(JSONObject j) {
                 JSONArray arr = j.optJSONArray("users");
                 all.clear();
                 for (int i = 0; arr != null && i < arr.length(); i++) {
@@ -197,13 +211,6 @@ public class ListActivity extends Activity {
                 // Same order as the web dashboard: most recent message first.
                 java.util.Collections.sort(all, (x, y) -> Long.compare(y.lastTime, x.lastTime));
                 filter();
-            }
-            public void fail(Exception e) {
-                loading = false;
-                if (e instanceof Api.Unauthorized) { startActivity(new Intent(ListActivity.this, LoginActivity.class)); finish(); return; }
-                status.setText("Load nahi hua: " + e.getMessage() + " — dobara try ho raha hai");
-            }
-        });
     }
 
     private boolean matches(User u, String key) {

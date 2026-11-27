@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin, jsonError, privateJsonHeaders } from "@/lib/auth";
 import { n8nConfig, findByColumn, upsertByClientId, sendTelegram, sendTelegramPhoto, logAdminMessage, logAdminPhoto, pauseAfterHumanReply } from "@/lib/n8n";
 import { TRADE_TEMPLATES } from "@/lib/trade-templates";
+import { waitUntil } from "@vercel/functions";
 import { logTradeEvent } from "@/lib/trade-history";
 
 export const dynamic = "force-dynamic";
@@ -31,13 +32,13 @@ export async function POST(req: Request) {
   let photo: any;
   try { photo = await sendTelegramPhoto(chatId, imageBase64, mimeType, ""); }
   catch (error) { return NextResponse.json({ error: "Screenshot nahi gaya", detail: error instanceof Error ? error.message : "" }, { status: 502, headers: privateJsonHeaders }); }
-  try { await logAdminPhoto(chatId, "", String(photo?.file_id || ""), String(photo?.message_id || "")); } catch {}
+  const bg: Promise<unknown>[] = [logAdminPhoto(chatId, "", String(photo?.file_id || ""), String(photo?.message_id || "")).catch(() => undefined)];
 
   let textSent = false, textError = "";
   try {
     const r: any = await sendTelegram(chatId, template.message);
     textSent = true;
-    try { await logAdminMessage(chatId, template.message, String(r?.result?.message_id || r?.message_id || "")); } catch {}
+    bg.push(logAdminMessage(chatId, template.message, String(r?.result?.message_id || r?.message_id || "")).catch(() => undefined));
   } catch (error) { textError = error instanceof Error ? error.message : "send failed"; }
 
   const at = new Date().toISOString();
@@ -46,8 +47,9 @@ export async function POST(req: Request) {
     await upsertByClientId(cfg.tables.clients, chatId, { trade_status: "payment_sent", trade_status_at: at, trade_status_by: by, trade_campaign: template.key });
     saved = true;
   } catch {}
-  if (saved) await logTradeEvent(chatId, String(row.first_name || ""), "payment_sent", template.key, by, at);
-  try { await pauseAfterHumanReply(chatId); } catch {}
+  if (saved) bg.push(logTradeEvent(chatId, String(row.first_name || ""), "payment_sent", template.key, by, at));
+  bg.push(pauseAfterHumanReply(chatId).catch(() => undefined));
+  waitUntil(Promise.all(bg));
   console.log(`[trade-payment] ${chatId} campaign=${template.key} by "${by}" photo=ok text=${textSent ? "ok" : "FAILED " + textError} saved=${saved}`);
   return NextResponse.json({ ok: true, status: "payment_sent", at, by, campaign: template.key, textSent, textError, saved }, { headers: privateJsonHeaders });
 }

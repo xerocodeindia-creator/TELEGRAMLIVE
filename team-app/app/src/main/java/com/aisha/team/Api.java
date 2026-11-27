@@ -44,6 +44,10 @@ public final class Api {
     public static volatile boolean needFresh = false;
     /** Replies sent from this phone (chatId → [time, text]) so the list moves that chat to the top at once. */
     public static final java.util.Map<String, Object[]> lastSent = new java.util.concurrent.ConcurrentHashMap<>();
+    // Speed (27 Nov 2026): last answers kept so the list and a chat show at once, then refresh in the background.
+    public static final java.util.Map<String, JSONObject> chatCache = new java.util.concurrent.ConcurrentHashMap<>();
+    public static String cachedList(Context c) { return prefs(c).getString("tq_cache", ""); }
+    public static void saveList(Context c, String json) { prefs(c).edit().putString("tq_cache", json).apply(); }
 
     private static HttpURLConnection open(Context c, String path, String method) throws Exception {
         HttpURLConnection h = (HttpURLConnection) new URL(BASE + path).openConnection();

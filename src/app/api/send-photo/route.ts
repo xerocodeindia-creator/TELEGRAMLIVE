@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin, jsonError, privateJsonHeaders } from "@/lib/auth";
+import { waitUntil } from "@vercel/functions";
 import { sendTelegramPhoto, logAdminPhoto, pauseAfterHumanReply } from "@/lib/n8n";
 
 export const dynamic = "force-dynamic";
@@ -31,9 +32,10 @@ export async function POST(req: Request) {
   const messageId = String(result?.message_id || "");
   const fileId = String(result?.file_id || "");
 
-  let logged = false;
-  try { await logAdminPhoto(chatId, caption, fileId, messageId); logged = true; } catch {}
-  let aiPausedNow = false;
-  try { aiPausedNow = (await pauseAfterHumanReply(chatId)).changed; } catch {}
-  return NextResponse.json({ sent: true, logged, messageId, fileId, aiPausedNow }, { headers: privateJsonHeaders });
+  // Saved to history and AI paused after the response (see manual-reply).
+  waitUntil(Promise.all([
+    logAdminPhoto(chatId, caption, fileId, messageId).catch(() => undefined),
+    pauseAfterHumanReply(chatId).catch(() => undefined),
+  ]));
+  return NextResponse.json({ sent: true, logged: true, messageId, fileId, aiPausedNow: false }, { headers: privateJsonHeaders });
 }
