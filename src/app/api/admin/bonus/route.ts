@@ -16,11 +16,21 @@ export const maxDuration = 300;
 const ADMIN_CHAT = "905651310";
 
 function parseNumbers(text: string) {
+  // Numbers may be one per line, comma/space separated, with +91 / 91 / 0, or written as "98765 43210".
   const out: string[] = [];
-  for (const m of String(text || "").match(/\+?\d[\d\s-]{8,16}\d/g) || []) {
-    const d = m.replace(/\D/g, "");
+  const push = (d: string) => {
     const p = d.length === 12 && d.startsWith("91") ? d.slice(2) : d.length === 11 && d.startsWith("0") ? d.slice(1) : d;
     if (/^[6-9]\d{9}$/.test(p) && !out.includes(p)) out.push(p);
+  };
+  for (const line of String(text || "").split(/[\n,;|]+/)) {
+    let buf = "";
+    for (const g of line.match(/\d+/g) || []) {
+      if (g.length >= 10) { if (buf) push(buf); buf = ""; push(g); continue; }
+      buf += g;
+      const need = buf.startsWith("91") ? 12 : buf.startsWith("0") ? 11 : 10; // "+91 98765 43210" → wait for all 12 digits
+      if (buf.length >= need) { push(buf); buf = ""; }
+    }
+    if (buf) push(buf);
   }
   return out;
 }
