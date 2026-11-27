@@ -109,7 +109,14 @@ public class ChatActivity extends Activity {
         list.setClipToPadding(false);
         adapter = new Adapter();
         list.setAdapter(adapter);
-        root.addView(list, new LinearLayout.LayoutParams(-1, 0, 1));
+        // Shown instead of a black screen until the chat history has arrived.
+        android.widget.FrameLayout listBox = new android.widget.FrameLayout(this);
+        TextView empty = Ui.text(this, "Chat load ho rahi hai…", 15, Ui.MUTED, false);
+        empty.setGravity(Gravity.CENTER);
+        listBox.addView(list, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        listBox.addView(empty, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        list.setEmptyView(empty);
+        root.addView(listBox, new LinearLayout.LayoutParams(-1, 0, 1));
 
         LinearLayout bar = new LinearLayout(this);
         bar.setGravity(Gravity.BOTTOM);
@@ -348,13 +355,12 @@ public class ChatActivity extends Activity {
     private void sendText() {
         String text = input.getText().toString().trim();
         if (text.isEmpty()) return;
-        sendBtn.setEnabled(false);
+        // The button stays usable: each reply is sent on its own, a slow one never blocks the next.
         addPending(text);
         input.setText("");
         try {
             Api.post(this, "/api/manual-reply", new JSONObject().put("chatId", chatId).put("text", text), new Api.Done<JSONObject>() {
                 public void ok(JSONObject j) {
-                    sendBtn.setEnabled(true);
                     Api.lastSent.put(chatId, new Object[]{ System.currentTimeMillis(), text });
                     Api.needFresh = true;
                     // Sent: show it as sent straight away (no "bhej rahe…" while the history reloads).
@@ -363,9 +369,9 @@ public class ChatActivity extends Activity {
                     lastSig = -1; load();
                 }
                 public void fail(Exception e) {
-                    sendBtn.setEnabled(true);
-                    items.remove(items.size() - 1); adapter.notifyDataSetChanged();
-                    input.setText(text);
+                    for (int i = items.size() - 1; i >= 0; i--) { Msg m = items.get(i); if (m.pending && text.equals(m.text)) { items.remove(i); break; } }
+                    adapter.notifyDataSetChanged();
+                    if (input.getText().toString().trim().isEmpty()) input.setText(text);
                     Toast.makeText(ChatActivity.this, "Message nahi gaya: " + e.getMessage(), Toast.LENGTH_LONG).show();
                 }
             });

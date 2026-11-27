@@ -50,6 +50,7 @@ public class AppFlowTest {
         Api.setMemberName(ctx, "");
         Api.needFresh = false;
         Api.lastSent.clear();
+        Api.resetImageState();
     }
     @After public void tearDown() { server.stop(); }
 

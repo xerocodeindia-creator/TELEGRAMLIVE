@@ -27,6 +27,13 @@ public final class Api {
     public static String BASE = BuildConfig.BASE_URL; // tests point this at a local server
     private static final String COOKIE_NAME = "aarohi_admin_session";
     public static final ExecutorService IO = Executors.newFixedThreadPool(4);
+    // 27 Nov 2026: photos and sends get their own threads, so slow photo downloads can never hold up
+    // opening a chat or sending a reply (before, everything shared these 4 threads and queued up).
+    public static final ExecutorService IMG = Executors.newFixedThreadPool(3);
+    public static final ExecutorService SEND = Executors.newFixedThreadPool(3);
+    private static final java.util.Map<String, List<Done<Bitmap>>> loadingImages = new java.util.HashMap<>();
+    private static final java.util.Map<String, Long> failedImages = new java.util.concurrent.ConcurrentHashMap<>();
+    static void resetImageState() { failedImages.clear(); synchronized (loadingImages) { loadingImages.clear(); } }
     public static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static final LruCache<String, Bitmap> IMAGES = new LruCache<String, Bitmap>(24 * 1024 * 1024) {
         @Override protected int sizeOf(String k, Bitmap b) { return b.getByteCount(); }
@@ -129,7 +136,7 @@ public final class Api {
     }
 
     public static void post(Context c, String path, JSONObject body, Done<JSONObject> done) {
-        IO.execute(() -> {
+        SEND.execute(() -> {
             try { JSONObject j = call(c, path, "POST", body); MAIN.post(() -> done.ok(j)); }
             catch (Exception e) { MAIN.post(() -> done.fail(e)); }
         });
@@ -139,9 +146,22 @@ public final class Api {
 
     /** Loads a Telegram photo through the dashboard's image proxy, scaled down to maxSide px. */
     public static void image(Context c, String fileId, int maxSide, Done<Bitmap> done) {
-        Bitmap hit = IMAGES.get(fileId + "@" + maxSide);
+        final String key = fileId + "@" + maxSide;
+        Bitmap hit = IMAGES.get(key);
         if (hit != null) { done.ok(hit); return; }
-        IO.execute(() -> {
+        Long failedAt = failedImages.get(key);
+        if (failedAt != null && System.currentTimeMillis() - failedAt < 60000) { done.fail(new Exception("Image abhi load nahi hui")); return; }
+        // The same photo asked for again while it is still downloading: wait for that download (no duplicate requests).
+        synchronized (loadingImages) {
+            List<Done<Bitmap>> waiting = loadingImages.get(key);
+            if (waiting != null) { waiting.add(done); return; }
+            List<Done<Bitmap>> l = new java.util.ArrayList<>(); l.add(done); loadingImages.put(key, l);
+        }
+        final Done<Bitmap> all = new Done<Bitmap>() {
+            public void ok(Bitmap b) { List<Done<Bitmap>> l; synchronized (loadingImages) { l = loadingImages.remove(key); } if (l != null) for (Done<Bitmap> d : l) d.ok(b); }
+            public void fail(Exception e) { failedImages.put(key, System.currentTimeMillis()); List<Done<Bitmap>> l; synchronized (loadingImages) { l = loadingImages.remove(key); } if (l != null) for (Done<Bitmap> d : l) d.fail(e); }
+        };
+        IMG.execute(() -> {
             try {
                 HttpURLConnection h = open(c, "/api/telegram-file?file_id=" + URLEncoder.encode(fileId, "UTF-8"), "GET");
                 h.setRequestProperty("Accept", "image/*");
@@ -158,9 +178,9 @@ public final class Api {
                 o.inSampleSize = s;
                 Bitmap bmp = BitmapFactory.decodeByteArray(raw, 0, raw.length, o);
                 if (bmp == null) throw new Exception("Image decode failed");
-                IMAGES.put(fileId + "@" + maxSide, bmp);
-                MAIN.post(() -> done.ok(bmp));
-            } catch (Exception e) { MAIN.post(() -> done.fail(e)); }
+                IMAGES.put(key, bmp);
+                MAIN.post(() -> all.ok(bmp));
+            } catch (Exception e) { MAIN.post(() -> all.fail(e)); }
         });
     }
 
