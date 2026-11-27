@@ -62,7 +62,7 @@ async function messagesForChats(tableId: string, chatIds: string[], paths: strin
 // users he marked Done are locked (no messages shown). Master / website see everything.
 async function viewFor(body: any, session: Session | null) {
   const role = session?.role || "web";
-  if (IS_AISHA || role !== "member") return { ...body, role, me: session ? { name: session.name } : null };
+  if (role !== "member") return { ...body, role, me: session ? { name: session.name } : null };
   const me = session!.name;
   const members = await listMembers().catch(() => []);
   const target = members.find(m => sameName(m.name, me))?.target || 0;
@@ -80,7 +80,7 @@ export async function GET(req: Request) {
   if (!warmOnly && !(await requireAdmin())) return jsonError("Unauthorized", 401);
   const fresh = url.searchParams.get("fresh") === "1";
   // Keep-warm ping also keeps the admin dashboard numbers ready (Ashish Team only).
-  if (warmOnly && !IS_AISHA) waitUntil(warmAdmin().catch(() => undefined));
+  if (warmOnly) waitUntil(warmAdmin().catch(() => undefined));
   const session = warmOnly ? null : await getSession();
   if (!warmOnly && !fresh && cache && Date.now() - cache.at < 3000) return NextResponse.json(await viewFor(cache.body, session), { headers: privateJsonHeaders });
   const cfg = n8nConfig();
@@ -93,8 +93,8 @@ export async function GET(req: Request) {
       { columnName: "bonus_status", condition: "isNotEmpty", value: null },
       { columnName: "task_1_completed_at", condition: "gte", value: monthStartIso },
       { columnName: "task_2_completed_at", condition: "gte", value: monthStartIso },
-      // Aarohi: any first task counts, Bajaj included.
-      ...(IS_AISHA ? [] : [{ columnName: "task_3_completed_at", condition: "gte", value: monthStartIso }]),
+      // Any first task counts (Aarohi: Bajaj; Aisha: Axis Direct, live since 26 Nov).
+      { columnName: "task_3_completed_at", condition: "gte", value: monthStartIso },
     ] };
     // Filtered reads are small; if this n8n version rejects a filter, fall back to plain reads (same result, slower).
     const clientRows = await readRows(cfg.tables.clients, { filter: clientsFilter, max: 5000 }).catch(e => { paths.push("clients-fallback:" + String(e).slice(0, 120)); return readRows(cfg.tables.clients, {}); });
@@ -102,9 +102,9 @@ export async function GET(req: Request) {
     const qualifies = (r: Row) => {
       let done: string[] = [];
       try { const v = JSON.parse(String(r.completed_tasks || "[]")); if (Array.isArray(v)) done = v.map(String); } catch {}
-      const ts = (IS_AISHA ? [r.task_1_completed_at, r.task_2_completed_at] : [r.task_1_completed_at, r.task_2_completed_at, r.task_3_completed_at]).map(toMillis).filter(Boolean);
+      const ts = [r.task_1_completed_at, r.task_2_completed_at, r.task_3_completed_at].map(toMillis).filter(Boolean);
       const day = ts.length ? istDay(Math.min(...ts)) : "";
-      return !!r.bonus_status || (!!day && day >= monthKey && done.some(t => t === "task_1_angel_one" || t === "task_2_choice_finx" || (!IS_AISHA && t === "task_3")));
+      return !!r.bonus_status || (!!day && day >= monthKey && done.some(t => t === "task_1_angel_one" || t === "task_2_choice_finx" || t === "task_3"));
     };
     const tqIds = (clientRows as Row[]).filter(r => /^\d+$/.test(String(r.client_id || "")) && qualifies(r)).map(r => String(r.client_id));
     const rawByChat = await messagesForChats(cfg.tables.messages, tqIds, paths);
@@ -119,9 +119,9 @@ export async function GET(req: Request) {
       let completed: string[] = [];
       try { const v = JSON.parse(String(r.completed_tasks || "[]")); if (Array.isArray(v)) completed = v.map(String); } catch {}
       const bonus = String(r.bonus_status || "");
-      const ts = (IS_AISHA ? [r.task_1_completed_at, r.task_2_completed_at] : [r.task_1_completed_at, r.task_2_completed_at, r.task_3_completed_at]).map(toMillis).filter(Boolean);
+      const ts = [r.task_1_completed_at, r.task_2_completed_at, r.task_3_completed_at].map(toMillis).filter(Boolean);
       const tqDay = ts.length ? istDay(Math.min(...ts)) : "";
-      const qualifiedThisMonth = !!tqDay && tqDay >= monthKey && completed.some(t => t === "task_1_angel_one" || t === "task_2_choice_finx" || (!IS_AISHA && t === "task_3"));
+      const qualifiedThisMonth = !!tqDay && tqDay >= monthKey && completed.some(t => t === "task_1_angel_one" || t === "task_2_choice_finx" || t === "task_3");
       if (!bonus && !qualifiedThisMonth) continue;
       const list = (byChat.get(id) || []).sort((a, b) => a.id - b.id);
       const last = list[list.length - 1];
@@ -133,7 +133,7 @@ export async function GET(req: Request) {
         name: String(r.first_name || "Telegram user"),
         phone: r.phone_number ? String(r.phone_number) : "",
         apps: (IS_AISHA
-          ? [completed.includes("task_2_choice_finx") ? "Choice" : "", completed.includes("task_1_angel_one") ? "HDFC" : "", completed.includes("task_3") ? "Bajaj/Zerodha" : ""]
+          ? [completed.includes("task_2_choice_finx") ? "Choice" : "", completed.includes("task_1_angel_one") ? "HDFC" : "", completed.includes("task_3") ? "3rd (Axis)" : ""]
           : [completed.includes("task_1_angel_one") ? "Angel One" : "", completed.includes("task_2_choice_finx") ? "Choice FinX" : "", completed.includes("task_3") ? "Bajaj" : ""]).filter(Boolean),
         bonus,
         // "" = in the Trade Qualified list; "done" / "not_interested" = moved out by the team.

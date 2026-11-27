@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { requireAdmin, jsonError, privateJsonHeaders, getSession } from "@/lib/auth";
-import { IS_AISHA } from "@/lib/brand";
 import { n8nConfig, upsertByClientId, findByColumn } from "@/lib/n8n";
 import { logTradeEvent } from "@/lib/trade-history";
 import { waitUntil } from "@vercel/functions";
@@ -28,7 +27,7 @@ export async function POST(req: Request) {
     // Only existing users can be marked (upsert must never create a new progress row).
     const row = await findByColumn(cfg.tables.clients, "client_id", chatId);
     if (!row) return jsonError("User nahi mila", 404);
-    const isMember = !IS_AISHA && session.role === "member";
+    const isMember = session.role === "member";
     // Ashish Team: a Done user is locked for members (only the master admin can move him back).
     if (isMember && String(row.trade_status || "") === "done") return jsonError("Trade Done — sirf admin badal sakta hai", 403);
     const at = status ? new Date().toISOString() : "";

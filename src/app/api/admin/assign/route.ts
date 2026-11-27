@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { getSession, jsonError, privateJsonHeaders, sameName } from "@/lib/auth";
-import { IS_AISHA } from "@/lib/brand";
 import { n8nConfig, readRows, upsertByClientId, type Row } from "@/lib/n8n";
 import { toMillis } from "@/lib/mappers";
 import { patchAssigned } from "@/lib/admin-data";
@@ -13,7 +12,7 @@ export const dynamic = "force-dynamic";
 //  { clear: true, members?: [...] }                                → take active users back (everyone sees them again)
 export async function POST(req: Request) {
   const s = await getSession();
-  if (!s || s.role !== "master" || IS_AISHA) return jsonError("Sirf admin", 403);
+  if (!s || s.role !== "master") return jsonError("Sirf admin", 403);
   const b = await req.json().catch(() => ({}));
   const cfg = n8nConfig();
   const t0 = Date.now();

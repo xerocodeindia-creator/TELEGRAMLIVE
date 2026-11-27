@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import crypto from "node:crypto";
 import { waitUntil } from "@vercel/functions";
-import { IS_AISHA } from "@/lib/brand";
 import { touchMember } from "@/lib/team";
 
 const cookieName = "aarohi_admin_session";
@@ -43,13 +42,13 @@ export async function POST(req: Request) {
   const given = String(body.password || "");
   const name = String(body.name || "").replace(/\s+/g, " ").trim().slice(0, 40);
   // Ashish Team master admin (27 Nov 2026): separate password, Aarohi only (env AAROHI_MASTER_PASSWORD).
-  const master = !IS_AISHA ? process.env.AAROHI_MASTER_PASSWORD || "" : "";
+  const master = process.env.AAROHI_MASTER_PASSWORD || ""; // per Vercel project: each bot has its own admin password
   let role = "";
   if (master && same(master, given)) role = "master";
   else if (same(password, given)) role = name && body.app === true ? "member" : "web";
   if (!role) return NextResponse.json({ error: "Incorrect password." }, { status: 401 });
   const token = sessionValue(secret, role, role === "master" ? name || "Admin" : name);
-  if (role === "member" && !IS_AISHA) waitUntil(touchMember(name).catch(() => undefined));
+  if (role === "member") waitUntil(touchMember(name).catch(() => undefined));
   const res = NextResponse.json({ authenticated: true, role, name: role === "master" ? name || "Admin" : name });
   res.cookies.set(cookieName, token, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict", path: "/", maxAge: 8 * 60 * 60 });
   return res;

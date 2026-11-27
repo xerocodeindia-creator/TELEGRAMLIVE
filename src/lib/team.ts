@@ -1,7 +1,8 @@
 import { n8nConfig, readRows, type Row } from "@/lib/n8n";
 
 // Ashish Team (Aarohi) team members: name, daily target, last login. n8n data table aarohi_team_members.
-export const TEAM_TABLE = process.env.N8N_TEAM_MEMBERS_TABLE_ID || "q53thl9awsWn2Z9A";
+import { TEAM_MEMBERS_TABLE } from "@/lib/brand";
+export const TEAM_TABLE = TEAM_MEMBERS_TABLE;
 export type Member = { name: string; target: number; lastLogin: string };
 
 let cache: { at: number; list: Member[] } | null = null;

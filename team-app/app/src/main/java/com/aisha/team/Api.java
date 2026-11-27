@@ -47,13 +47,13 @@ public final class Api {
     public static final int AUTH_V = 2;
     public static boolean hasSession(Context c) {
         if (prefs(c).getString("cookie", "").isEmpty()) return false;
-        return !BuildConfig.IS_AAROHI || prefs(c).getInt("auth_v", 0) >= AUTH_V;
+        return !BuildConfig.TEAM_ADMIN || prefs(c).getInt("auth_v", 0) >= AUTH_V;
     }
     public static void clearSession(Context c) { prefs(c).edit().remove("cookie").remove("role").apply(); }
     /** "master" (admin), "member" (team member) or "web". */
     public static String role(Context c) { return prefs(c).getString("role", "member"); }
-    public static boolean isMaster(Context c) { return BuildConfig.IS_AAROHI && role(c).equals("master"); }
-    public static boolean isMember(Context c) { return BuildConfig.IS_AAROHI && !isMaster(c); }
+    public static boolean isMaster(Context c) { return BuildConfig.TEAM_ADMIN && role(c).equals("master"); }
+    public static boolean isMember(Context c) { return BuildConfig.TEAM_ADMIN && !isMaster(c); }
     public static String memberName(Context c) { return prefs(c).getString("member", ""); }
     public static void setMemberName(Context c, String n) { prefs(c).edit().putString("member", n).apply(); }
     /** Set after a trade status change so the list skips the server's short cache. */

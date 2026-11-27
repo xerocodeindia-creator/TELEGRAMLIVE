@@ -24,7 +24,7 @@ public class LoginActivity extends Activity {
 
         TextView title = Ui.text(this, BuildConfig.APP_TITLE, 26, Ui.TEXT, true);
         title.setGravity(Gravity.CENTER);
-        TextView sub = Ui.text(this, BuildConfig.IS_AAROHI ? "Team member: naam + team password\nAdmin: admin password" : "Team login — dashboard wala password", 14, Ui.MUTED, false);
+        TextView sub = Ui.text(this, BuildConfig.TEAM_ADMIN ? "Team member: naam + team password\nAdmin: admin password" : "Team login — dashboard wala password", 14, Ui.MUTED, false);
         sub.setGravity(Gravity.CENTER);
         sub.setPadding(0, Ui.dp(this, 6), 0, Ui.dp(this, 24));
 

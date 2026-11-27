@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { requireAdmin, jsonError, privateJsonHeaders, getSession } from "@/lib/auth";
 import { n8nConfig, readRows, findByColumn } from "@/lib/n8n";
 import { memberBlock } from "@/lib/team";
-import { IS_AISHA } from "@/lib/brand";
 import { msgCmp } from "@/lib/ui";
 import { mapMessage } from "@/lib/mappers";
 
@@ -19,7 +18,7 @@ export async function GET(req: Request) {
   const t0 = Date.now();
   const lim = Math.min(3000, Math.max(20, Number(new URL(req.url).searchParams.get("limit")) || 150));
   // Ashish Team member: the user's row is read alongside the history (no extra wait) to apply the Done lock.
-  const isMember = !IS_AISHA && session.role === "member";
+  const isMember = session.role === "member";
   const rowP = isMember ? findByColumn(cfg.tables.clients, "client_id", chatId).catch(() => undefined) : Promise.resolve(undefined);
   try {
     let rows;
@@ -34,7 +33,7 @@ export async function GET(req: Request) {
       // Older n8n versions may not accept a filter on this endpoint: scan instead.
       rows = (await readRows(cfg.tables.messages, { max: 20000 })).filter(r => String(r.chat_id ?? r.user_id ?? "").trim() === chatId);
     }
-    const block = memberBlock(await rowP, session.role, session.name, IS_AISHA);
+    const block = memberBlock(await rowP, session.role, session.name, false);
     if (block) return NextResponse.json({ error: block, locked: true }, { status: 403, headers: privateJsonHeaders });
     const messages = rows.map(mapMessage).filter(m => m.chatId === chatId).sort(msgCmp);
     console.log(`[messages] ${chatId} ${Date.now() - t0} ms rows=${messages.length}`);

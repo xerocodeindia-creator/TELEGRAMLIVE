@@ -41,7 +41,7 @@ public class ChatActivity extends Activity {
     private String tradeCampaign = "";
     private JSONObject paymentTemplate; // campaign chosen for the current "Payment bheja"
     /** Name of the "no status yet" list: Ashish Team calls it Activate (bonus users), Team Dhruv Trade Qualified. */
-    static final String LIST = BuildConfig.IS_AAROHI ? "Activate" : "Trade Qualified";
+    static final String LIST = BuildConfig.TEAM_ADMIN ? "Activate" : "Trade Qualified";
 
     static class Msg { long id; String dir, text, fileId, status; long time; boolean dayLabel, pending, photo; long keepUntil; }
 
@@ -182,12 +182,12 @@ public class ChatActivity extends Activity {
             if (tradeStatus.equals("payment_sent")) {
                 row.addView(actionButton("✅ Done", Ui.GREEN, () -> confirmStatus("done")), cell);
                 row.addView(actionButton("🚫 Not int", 0xFFB84A4A, () -> confirmStatus("not_interested")), cell);
-                row.addView(actionButton(BuildConfig.IS_AAROHI ? "↩ Activate" : "↩ TQ", Ui.OUT, () -> confirmStatus("")), last);
+                row.addView(actionButton(BuildConfig.TEAM_ADMIN ? "↩ Activate" : "↩ TQ", Ui.OUT, () -> confirmStatus("")), last);
             } else if (tradeStatus.equals("done") && Api.isMember(this)) {
                 // Ashish Team: Done is final for members — only the admin can move the user back.
                 row.addView(Ui.text(this, "🔒 Sirf admin wapas la sakta hai", 12, Ui.MUTED, false));
             } else {
-                row.addView(actionButton(BuildConfig.IS_AAROHI ? "↩ Wapas Activate mein" : "↩ Wapas TQ mein", Ui.OUT, () -> confirmStatus("")), new LinearLayout.LayoutParams(-1, -2));
+                row.addView(actionButton(BuildConfig.TEAM_ADMIN ? "↩ Wapas Activate mein" : "↩ Wapas TQ mein", Ui.OUT, () -> confirmStatus("")), new LinearLayout.LayoutParams(-1, -2));
             }
         }
         actions.addView(row);

@@ -37,7 +37,7 @@ public class ListActivity extends Activity {
     private Adapter adapter;
     private boolean loading;
     // Filter chips: key → label. "all" clears the filter.
-    private static final String[][] FILTERS = BuildConfig.IS_AAROHI
+    private static final String[][] FILTERS = BuildConfig.TEAM_ADMIN
         ? new String[][] { {"all", "Sab"}, {"unread", "Unread"}, {"bonus1", "Reply nahi"}, {"bonus2", "Reply aaya"}, {"angel", "Angel One"}, {"choice", "Choice FinX"}, {"bajaj", "Bajaj"} }
         : new String[][] { {"all", "Sab"}, {"unread", "Unread"}, {"bonus1", "Bonus 1"}, {"bonus2", "Bonus 2"}, {"choice", "Choice"}, {"hdfc", "HDFC"}, {"bajaj", "Bajaj"} };
     private String filterKey = "all";
@@ -45,7 +45,7 @@ public class ListActivity extends Activity {
     // Tabs: Trade Qualified (no status) / Trade Done / Trade Not Interested.
     // Ashish Team (27 Nov 2026): only bonus-campaign users; first tab "Activate" (no status yet) instead of TQ.
     // The website dashboard still shows the full Trade Qualified list.
-    private static final String[][] TABS = BuildConfig.IS_AAROHI
+    private static final String[][] TABS = BuildConfig.TEAM_ADMIN
         ? new String[][] { {"", "🚀 Activate"}, {"payment_sent", "Payment"}, {"done", "Done"}, {"not_interested", "Not Int"} }
         : new String[][] { {"", "TQ"}, {"payment_sent", "Payment"}, {"done", "Done"}, {"not_interested", "Not Int"} };
     private String tab = "";
@@ -216,7 +216,7 @@ public class ListActivity extends Activity {
                     for (int k = 0; apps != null && k < apps.length(); k++) a.add(apps.optString(k));
                     u.apps = TextUtils.join(" · ", a);
                     u.bonus = o.optString("bonus");
-                    if (BuildConfig.IS_AAROHI && u.bonus.isEmpty()) continue; // Ashish Team: bonus-campaign users only
+                    if (BuildConfig.TEAM_ADMIN && u.bonus.isEmpty()) continue; // Ashish Team: bonus-campaign users only
                     u.unread = o.optInt("unread");
                     u.lastTime = o.optLong("lastTime");
                     JSONObject last = o.optJSONObject("last");
@@ -349,7 +349,7 @@ public class ListActivity extends Activity {
         List<User> base = new ArrayList<>();
         for (User u : all) if (tab.equals(u.tradeStatus) && inDate(u, dateKey)) base.add(u);
         int unread = 0; for (User u : base) if (u.unread > 0) unread++;
-        String tabName = tab.isEmpty() ? (BuildConfig.IS_AAROHI ? "Activate — bonus users (funds bhejne wale)" : "Trade Qualified") : tab.equals("payment_sent") ? "Payment bheja" : tab.equals("done") ? "Trade Done" : "Trade Not Interested";
+        String tabName = tab.isEmpty() ? (BuildConfig.TEAM_ADMIN ? "Activate — bonus users (funds bhejne wale)" : "Trade Qualified") : tab.equals("payment_sent") ? "Payment bheja" : tab.equals("done") ? "Trade Done" : "Trade Not Interested";
         header.setText(tabName);
         currentBase = base;
         for (User u : base) {
@@ -384,7 +384,7 @@ public class ListActivity extends Activity {
     /** Member's own score for the chosen date filter (counted on the Done time), plus today vs target. */
     private void updateBanner() {
         if (banner == null) return;
-        if (!BuildConfig.IS_AAROHI || Api.isMaster(this)) { banner.setVisibility(View.GONE); return; }
+        if (!BuildConfig.TEAM_ADMIN || Api.isMaster(this)) { banner.setVisibility(View.GONE); return; }
         String me = Api.memberName(this).trim();
         if (me.isEmpty()) { banner.setVisibility(View.GONE); return; }
         long now = System.currentTimeMillis();
@@ -435,7 +435,7 @@ public class ListActivity extends Activity {
                 h.preview.setText(Ui.statusLabel(u.tradeStatus, u.tradeCampaign) + (u.tradeBy.isEmpty() ? "" : " · " + u.tradeBy) + (u.tradeAt > 0 ? " · " + Ui.listTime(u.tradeAt) : ""));
             else h.preview.setText(u.preview);
             String tags = u.apps;
-            if (!u.bonus.isEmpty()) tags = (tags.isEmpty() ? "" : tags + " · ") + (BuildConfig.IS_AAROHI ? (u.bonus.equals("step2") ? "Reply aaya" : "Reply nahi") : "Bonus " + (u.bonus.equals("step2") ? "2" : "1"));
+            if (!u.bonus.isEmpty()) tags = (tags.isEmpty() ? "" : tags + " · ") + (BuildConfig.TEAM_ADMIN ? (u.bonus.equals("step2") ? "Reply aaya" : "Reply nahi") : "Bonus " + (u.bonus.equals("step2") ? "2" : "1"));
             if (Api.isMaster(ListActivity.this) && !u.assignedTo.isEmpty()) tags = (tags.isEmpty() ? "" : tags + " · ") + "👤 " + u.assignedTo;
             h.tags.setText(tags);
             h.badge.setVisibility(u.unread > 0 ? View.VISIBLE : View.GONE);

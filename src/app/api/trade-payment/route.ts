@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { requireAdmin, jsonError, privateJsonHeaders, getSession } from "@/lib/auth";
-import { IS_AISHA } from "@/lib/brand";
 import { n8nConfig, findByColumn, upsertByClientId, sendTelegram, sendTelegramPhoto, logAdminMessage, logAdminPhoto, pauseAfterHumanReply } from "@/lib/n8n";
 import { TRADE_TEMPLATES } from "@/lib/trade-templates";
 import { waitUntil } from "@vercel/functions";
@@ -30,7 +29,7 @@ export async function POST(req: Request) {
   const cfg = n8nConfig();
   const row = await findByColumn(cfg.tables.clients, "client_id", chatId).catch(() => undefined);
   if (!row) return jsonError("User nahi mila", 404);
-  const isMember = !IS_AISHA && session.role === "member";
+  const isMember = session.role === "member";
   if (isMember && String(row.trade_status || "") === "done") return jsonError("Trade Done — ye chat band hai", 403);
   const extra = isMember && !String(row.assigned_to || "").trim() ? { assigned_to: session.name } : {};
 

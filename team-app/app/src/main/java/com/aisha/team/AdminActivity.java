@@ -140,7 +140,12 @@ public class AdminActivity extends Activity {
 
         section("Accounts");
         row(card("Naye leads", j.optInt("leads"), Ui.ACCENT), card("Accounts", acc == null ? 0 : acc.optInt("total"), Ui.GREEN));
-        row(card("Choice FinX", app == null ? 0 : app.optInt("Choice FinX"), Ui.TEXT), card("Angel One", app == null ? 0 : app.optInt("Angel One"), Ui.TEXT), card("Bajaj", app == null ? 0 : app.optInt("Bajaj"), Ui.TEXT));
+        // App names come from the server (Ashish Team: Angel One / Choice FinX / Bajaj; Team Dhruv: HDFC SKY / Choice / Axis Direct).
+        JSONArray names = acc == null ? null : acc.optJSONArray("apps");
+        if (names == null || names.length() == 0) names = new JSONArray().put("Choice FinX").put("Angel One").put("Bajaj");
+        View[] cards = new View[names.length()];
+        for (int i = 0; i < names.length(); i++) cards[i] = card(names.optString(i), app == null ? 0 : app.optInt(names.optString(i)), Ui.TEXT);
+        row(cards);
         row(card("Task 1", task == null ? 0 : task.optInt(0), Ui.TEXT), card("Task 2", task == null ? 0 : task.optInt(1), Ui.TEXT), card("Task 3", task == null ? 0 : task.optInt(2), Ui.TEXT));
 
         section("Trade / Funds");
@@ -383,7 +388,7 @@ public class AdminActivity extends Activity {
                 sb.append("Paste kiye: ").append(j.optInt("parsed")).append(" numbers\n");
                 sb.append("✅ Jayega: ").append(will).append("\n");
                 sb.append("⏭ Skip: ").append(sk == null ? 0 : sk.length()).append("\n");
-                sb.append("❓ Bot mein nahi mile: ").append(nf == null ? 0 : nf.length()).append("\n");
+                sb.append("❓ Bot mein nahi mile: ").append(j.has("notFoundCount") ? j.optInt("notFoundCount") : nf == null ? 0 : nf.length()).append("\n");
                 if (list != null && list.length() > 0) {
                     sb.append("\nJinko jayega:\n");
                     for (int i = 0; i < Math.min(list.length(), 30); i++) { JSONObject o = list.optJSONObject(i); sb.append("• ").append(o.optString("name")).append(" (..").append(o.optString("last4")).append(")\n"); }

@@ -2,7 +2,7 @@ plugins { id "com.android.application" }
 android {
     namespace "com.aisha.team"
     compileSdk 34
-    defaultConfig { applicationId "com.aisha.team"; minSdk 24; targetSdk 34; versionCode 9; versionName "1.8" }
+    defaultConfig { applicationId "com.aisha.team"; minSdk 24; targetSdk 34; versionCode 10; versionName "1.9" }
     buildFeatures { buildConfig true }
     // Two apps from one code: "aisha" = Team Dhruv (unchanged package, Aisha server),
     // "aarohi" = Ashish Team (Aarohi bot) (own package so both install side by side, Aarohi server, own signing key).
@@ -14,6 +14,8 @@ android {
             buildConfigField "String", "BOT_NAME", '"Aisha"'
             buildConfigField "String", "APP_TITLE", '"Team Dhruv"'
             buildConfigField "boolean", "IS_AAROHI", "false"
+            // 28 Nov 2026 (v1.9): Team Dhruv gets the same team features as Ashish Team (bonus users list, master admin, Done lock, bonus send).
+            buildConfigField "boolean", "TEAM_ADMIN", "true"
             resValue "string", "app_name", "Team Dhruv"
         }
         aarohi {
@@ -24,6 +26,7 @@ android {
             buildConfigField "String", "BOT_NAME", '"Aarohi"'
             buildConfigField "String", "APP_TITLE", '"Ashish Team"'
             buildConfigField "boolean", "IS_AAROHI", "true"
+            buildConfigField "boolean", "TEAM_ADMIN", "true"
             resValue "string", "app_name", "Ashish Team"
         }
     }

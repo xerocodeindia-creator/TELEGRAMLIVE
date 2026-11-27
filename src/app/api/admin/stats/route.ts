@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession, jsonError, privateJsonHeaders, sameName } from "@/lib/auth";
-import { IS_AISHA } from "@/lib/brand";
+import { TEAM_APPS } from "@/lib/brand";
 import { rangeFor, loadData, accounts, trades, leads } from "@/lib/admin-data";
 import { listMembers } from "@/lib/team";
 
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 // Ashish Team master admin dashboard numbers (Aarohi only). ?range=today|yesterday|7d|month|custom&from=&to=
 export async function GET(req: Request) {
   const s = await getSession();
-  if (!s || s.role !== "master" || IS_AISHA) return jsonError("Sirf admin", 403);
+  if (!s || s.role !== "master") return jsonError("Sirf admin", 403);
   const u = new URL(req.url);
   const r = rangeFor(String(u.searchParams.get("range") || "today"), u.searchParams.get("from") || "", u.searchParams.get("to") || "");
   const t0 = Date.now();
@@ -17,7 +17,7 @@ export async function GET(req: Request) {
     const [{ clients, history }, members] = await Promise.all([loadData(r, u.searchParams.get("fresh") === "1"), listMembers()]);
     const acc = accounts(clients, r);
     const tr = trades(history, r);
-    const byApp: Record<string, number> = { "Choice FinX": 0, "Angel One": 0, "Bajaj": 0 };
+    const byApp: Record<string, number> = Object.fromEntries(TEAM_APPS.map(([, a]) => [a, 0]));
     const byTask = [0, 0, 0];
     for (const a of acc) { byApp[a.app] = (byApp[a.app] || 0) + 1; byTask[Math.min(2, a.taskNo - 1)]++; }
     const ev = (e: string) => tr.filter(x => x.event === e).length;
@@ -42,7 +42,7 @@ export async function GET(req: Request) {
     const body = {
       range: r,
       leads: leads(clients, r),
-      accounts: { total: acc.length, byApp, byTask },
+      accounts: { total: acc.length, byApp, byTask, apps: TEAM_APPS.map(([, a]) => a) },
       trade: { payment: ev("payment_sent"), done: ev("done"), notInt: ev("not_interested"), backToList: ev("back_to_tq") },
       bonus: { total: bonusRows.length, replied: bonusRows.filter(c => c.bonus_status === "step2").length, noReply: bonusRows.filter(c => c.bonus_status === "step1").length, active: active.length, unassigned: active.filter(c => !String(c.assigned_to || "").trim()).length },
       members: perMember,

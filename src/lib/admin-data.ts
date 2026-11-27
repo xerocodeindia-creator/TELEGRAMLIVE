@@ -1,6 +1,7 @@
 import { n8nConfig, readRows, type Row } from "@/lib/n8n";
 import { TRADE_HISTORY_TABLE } from "@/lib/trade-history";
 import { toMillis } from "@/lib/mappers";
+import { TEAM_APPS } from "@/lib/brand";
 
 // Ashish Team master admin (Aarohi): numbers for a date range in IST. 27 Nov 2026.
 const IST = 5.5 * 3600 * 1000, DAY = 86400000;
@@ -18,7 +19,7 @@ export function rangeFor(key: string, from?: string, to?: string): Range {
   return { from: today, to: today, label: "Aaj" };
 }
 
-const APPS: [string, string][] = [["task_1_completed_at", "Angel One"], ["task_2_completed_at", "Choice FinX"], ["task_3_completed_at", "Bajaj"]];
+const APPS = TEAM_APPS;
 
 // Speed (28 Nov 2026): one shared data set covers every range button (this month + last 7 days), read in parallel
 // (one small query per day + per task/bonus column instead of ~14 pages one after another), kept 2 min, and refreshed

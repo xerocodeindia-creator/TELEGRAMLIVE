@@ -1,5 +1,5 @@
 import { readReportToken } from "@/lib/report-token";
-import { IS_AISHA } from "@/lib/brand";
+import { TEAM_APPS } from "@/lib/brand";
 import { rangeFor, loadData, accounts, trades, leads, istDay } from "@/lib/admin-data";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +12,7 @@ const EVENT: Record<string, string> = { payment_sent: "Funds / payment bheja", d
 
 export async function GET(req: Request) {
   const tok = readReportToken(new URL(req.url).searchParams.get("t") || "");
-  if (!tok || IS_AISHA) return new Response("Link expire ho gaya. App se dobara Excel report dabao.", { status: 403 });
+  if (!tok) return new Response("Link expire ho gaya. App se dobara Excel report dabao.", { status: 403 });
   const r = rangeFor(tok.range, tok.from, tok.to);
   const { clients, history } = await loadData(r);
   const acc = accounts(clients, r), tr = trades(history, r);
@@ -21,7 +21,7 @@ export async function GET(req: Request) {
   lines.push([]);
   lines.push(["Naye leads", leads(clients, r)]);
   lines.push(["Accounts total", acc.length]);
-  for (const app of ["Choice FinX", "Angel One", "Bajaj"]) lines.push([`  ${app}`, acc.filter(a => a.app === app).length]);
+  for (const [, app] of TEAM_APPS) lines.push([`  ${app}`, acc.filter(a => a.app === app).length]);
   for (let i = 1; i <= 3; i++) lines.push([`  Task ${i}`, acc.filter(a => Math.min(3, a.taskNo) === i).length]);
   lines.push(["Funds / payment bheja", tr.filter(x => x.event === "payment_sent").length]);
   lines.push(["Trade done", tr.filter(x => x.event === "done").length]);

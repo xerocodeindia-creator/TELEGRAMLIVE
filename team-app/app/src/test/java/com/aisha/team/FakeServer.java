@@ -89,7 +89,7 @@ class FakeServer {
                     users.put(user("7581773680", "Sofiya", "Choice,Bajaj", "step1", 0, now - 3600000, "Ok", "admin"));
                     users.put(user("222", "Anu", "HDFC", "step1", 0, now - 26 * 3600000L, "Apka Bonus Ready Hai", "bot"));
                     users.put(user("333", "Old", "Choice", "step1", 0, now - 86400000L, "nahi", "in"));
-                    if (BuildConfig.IS_AAROHI) users.put(user("444", "Plain", "Choice", "", 0, now - 7200000L, "hi", "in")); // TQ without bonus: must be hidden in Ashish Team
+                    if (BuildConfig.TEAM_ADMIN) users.put(user("444", "Plain", "Choice", "", 0, now - 7200000L, "hi", "in")); // TQ without bonus: must be hidden in Ashish Team
                     for (int i = 0; i < users.length(); i++) { JSONObject u = users.getJSONObject(i); if (locked.contains(u.getString("id"))) u.put("locked", true).put("last", JSONObject.NULL).put("unread", 0); }
                     return send(200, new JSONObject().put("users", users).put("me", new JSONObject().put("name", "Rahul").put("target", target)));
                 }

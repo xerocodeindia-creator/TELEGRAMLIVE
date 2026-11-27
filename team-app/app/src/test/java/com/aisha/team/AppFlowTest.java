@@ -120,7 +120,7 @@ public class AppFlowTest {
         waitFor("list loaded", () -> lv.getAdapter().getCount() > 0);
         assertTrue(server.log.toString(), server.log.contains("GET /api/tq"));
         // TQ tab: Ravi, Sofiya, Anu (Old is not interested)
-        if (BuildConfig.IS_AAROHI) {
+        if (BuildConfig.TEAM_ADMIN) {
             // Ashish Team: bonus-campaign users only (Plain has no bonus), first tab is "Activate"
             assertEquals(List.of("Ravi", "Sofiya", "Anu"), rowNames(lv));
             assertNotNull("tab counts", findText(root, "🚀 Activate  3"));
@@ -134,7 +134,7 @@ public class AppFlowTest {
         // Not Int tab
         findText(root, "Not Int").performClick();
         assertEquals(List.of("Old"), rowNames(lv));
-        findText(root, BuildConfig.IS_AAROHI ? "🚀 Activate" : "TQ").performClick();
+        findText(root, BuildConfig.TEAM_ADMIN ? "🚀 Activate" : "TQ").performClick();
         // Filter dialog: Unread
         findText(root, "Filter").performClick();
         AlertDialog d = (AlertDialog) ShadowAlertDialog.getLatestDialog();
@@ -203,7 +203,7 @@ public class AppFlowTest {
         assertEquals("7581773680", call.getString("chatId"));
         assertEquals("done", call.getString("status"));
         assertEquals("Rahul", call.getString("by"));
-        if (BuildConfig.IS_AAROHI) {
+        if (BuildConfig.TEAM_ADMIN) {
             // Ashish Team: Done is final for a member — the chat closes (locked).
             waitFor("chat closed after Done", chat::isFinishing);
         } else {
@@ -227,7 +227,7 @@ public class AppFlowTest {
 
         // Undo (Ashish Team: a member can't; only the admin can)
         Intent in2 = new Intent(in).putExtra("tradeStatus", "done").putExtra("tradeBy", "Rahul");
-        if (BuildConfig.IS_AAROHI) {
+        if (BuildConfig.TEAM_ADMIN) {
             ActivityController<ChatActivity> cm = Robolectric.buildActivity(ChatActivity.class, in2).setup();
             View rm = cm.get().getWindow().getDecorView();
             assertNotNull(findText(rm, "🔒 Sirf admin wapas la sakta hai"));
@@ -237,7 +237,7 @@ public class AppFlowTest {
         }
         ActivityController<ChatActivity> cc2 = Robolectric.buildActivity(ChatActivity.class, in2).setup();
         View r2 = cc2.get().getWindow().getDecorView();
-        findText(r2, BuildConfig.IS_AAROHI ? "↩ Wapas Activate mein" : "↩ Wapas TQ mein").performClick();
+        findText(r2, BuildConfig.TEAM_ADMIN ? "↩ Wapas Activate mein" : "↩ Wapas TQ mein").performClick();
         ((AlertDialog) ShadowAlertDialog.getLatestDialog()).getButton(AlertDialog.BUTTON_POSITIVE).performClick();
         waitFor("undo saved", () -> server.statusCalls.size() == 2);
         assertEquals("", server.statusCalls.get(1).getString("status"));
@@ -448,7 +448,7 @@ public class AppFlowTest {
     }
 
     @Test public void aarohi_memberBanner_lockedDone_andAdminDashboard() throws Exception {
-        if (!BuildConfig.IS_AAROHI) return;
+        if (!BuildConfig.TEAM_ADMIN) return;
         loginSession("Rahul");
         server.tradeStatus.put("7581773680", "done"); server.tradeBy.put("7581773680", "Rahul"); server.locked.add("7581773680");
         server.target = 5;
