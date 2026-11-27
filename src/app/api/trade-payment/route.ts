@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireAdmin, jsonError, privateJsonHeaders } from "@/lib/auth";
+import { requireAdmin, jsonError, privateJsonHeaders, getSession } from "@/lib/auth";
+import { IS_AISHA } from "@/lib/brand";
 import { n8nConfig, findByColumn, upsertByClientId, sendTelegram, sendTelegramPhoto, logAdminMessage, logAdminPhoto, pauseAfterHumanReply } from "@/lib/n8n";
 import { TRADE_TEMPLATES } from "@/lib/trade-templates";
 import { waitUntil } from "@vercel/functions";
@@ -11,7 +12,8 @@ export const runtime = "nodejs";
 // Team app (Aisha and Aarohi): "Payment bheja". Sends the payment screenshot, then the campaign's trade instructions,
 // and moves the user to the Payment tab (trade_status = payment_sent). Nothing is marked if the photo fails.
 export async function POST(req: Request) {
-  if (!(await requireAdmin())) return jsonError("Unauthorized", 401);
+  const session = await getSession();
+  if (!session) return jsonError("Unauthorized", 401);
   const origin = req.headers.get("origin");
   if (origin && new URL(origin).host !== new URL(req.url).host) return jsonError("Cross-origin request denied", 403);
 
@@ -28,6 +30,9 @@ export async function POST(req: Request) {
   const cfg = n8nConfig();
   const row = await findByColumn(cfg.tables.clients, "client_id", chatId).catch(() => undefined);
   if (!row) return jsonError("User nahi mila", 404);
+  const isMember = !IS_AISHA && session.role === "member";
+  if (isMember && String(row.trade_status || "") === "done") return jsonError("Trade Done — ye chat band hai", 403);
+  const extra = isMember && !String(row.assigned_to || "").trim() ? { assigned_to: session.name } : {};
 
   let photo: any;
   try { photo = await sendTelegramPhoto(chatId, imageBase64, mimeType, ""); }
@@ -44,7 +49,7 @@ export async function POST(req: Request) {
   const at = new Date().toISOString();
   let saved = false;
   try {
-    await upsertByClientId(cfg.tables.clients, chatId, { trade_status: "payment_sent", trade_status_at: at, trade_status_by: by, trade_campaign: template.key });
+    await upsertByClientId(cfg.tables.clients, chatId, { trade_status: "payment_sent", trade_status_at: at, trade_status_by: by, trade_campaign: template.key, ...extra });
     saved = true;
   } catch {}
   if (saved) bg.push(logTradeEvent(chatId, String(row.first_name || ""), "payment_sent", template.key, by, at));

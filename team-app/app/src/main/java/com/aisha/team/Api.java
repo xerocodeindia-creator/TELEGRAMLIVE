@@ -43,8 +43,17 @@ public final class Api {
     public interface Done<T> { void ok(T value); void fail(Exception e); }
 
     private static SharedPreferences prefs(Context c) { return c.getApplicationContext().getSharedPreferences("aisha_team", Context.MODE_PRIVATE); }
-    public static boolean hasSession(Context c) { return !prefs(c).getString("cookie", "").isEmpty(); }
-    public static void clearSession(Context c) { prefs(c).edit().remove("cookie").apply(); }
+    /** Ashish Team v1.6: logins now carry the member's name and role, so older logins must log in once again. */
+    public static final int AUTH_V = 2;
+    public static boolean hasSession(Context c) {
+        if (prefs(c).getString("cookie", "").isEmpty()) return false;
+        return !BuildConfig.IS_AAROHI || prefs(c).getInt("auth_v", 0) >= AUTH_V;
+    }
+    public static void clearSession(Context c) { prefs(c).edit().remove("cookie").remove("role").apply(); }
+    /** "master" (admin), "member" (team member) or "web". */
+    public static String role(Context c) { return prefs(c).getString("role", "member"); }
+    public static boolean isMaster(Context c) { return BuildConfig.IS_AAROHI && role(c).equals("master"); }
+    public static boolean isMember(Context c) { return BuildConfig.IS_AAROHI && !isMaster(c); }
     public static String memberName(Context c) { return prefs(c).getString("member", ""); }
     public static void setMemberName(Context c, String n) { prefs(c).edit().putString("member", n).apply(); }
     /** Set after a trade status change so the list skips the server's short cache. */
@@ -100,14 +109,16 @@ public final class Api {
         return json;
     }
 
-    public static void login(Context c, String password, Done<Boolean> done) {
+    public static void login(Context c, String password, Done<Boolean> done) { login(c, password, memberName(c), done); }
+
+    public static void login(Context c, String password, String name, Done<Boolean> done) {
         IO.execute(() -> {
             try {
                 clearSession(c);
                 HttpURLConnection h = open(c, "/api/auth", "POST");
                 h.setDoOutput(true);
                 h.setRequestProperty("Content-Type", "application/json");
-                byte[] b = new JSONObject().put("password", password).toString().getBytes(StandardCharsets.UTF_8);
+                byte[] b = new JSONObject().put("password", password).put("name", name).put("app", true).toString().getBytes(StandardCharsets.UTF_8);
                 try (OutputStream o = h.getOutputStream()) { o.write(b); }
                 int code = h.getResponseCode();
                 if (code != 200) {
@@ -122,7 +133,9 @@ public final class Api {
                     for (String v : e.getValue()) if (v.startsWith(COOKIE_NAME + "=")) token = v.substring(COOKIE_NAME.length() + 1).split(";")[0];
                 }
                 if (token.isEmpty()) throw new Exception("Login cookie nahi mila");
-                prefs(c).edit().putString("cookie", token).apply();
+                String role = "member";
+                try { role = new JSONObject(new String(readAll(h.getInputStream()), StandardCharsets.UTF_8)).optString("role", "member"); } catch (Exception ignored) { }
+                prefs(c).edit().putString("cookie", token).putString("role", role).putInt("auth_v", AUTH_V).remove("tq_cache").apply();
                 MAIN.post(() -> done.ok(true));
             } catch (Exception e) { MAIN.post(() -> done.fail(e)); }
         });

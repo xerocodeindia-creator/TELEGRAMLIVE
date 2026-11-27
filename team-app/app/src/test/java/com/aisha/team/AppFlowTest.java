@@ -86,7 +86,7 @@ public class AppFlowTest {
         return out;
     }
     private void loginSession(String name) {
-        ctx.getSharedPreferences("aisha_team", Context.MODE_PRIVATE).edit().putString("cookie", FakeServer.TOKEN).apply();
+        ctx.getSharedPreferences("aisha_team", Context.MODE_PRIVATE).edit().putString("cookie", FakeServer.TOKEN).putInt("auth_v", 2).apply();
         Api.setMemberName(ctx, name);
     }
 
@@ -203,8 +203,13 @@ public class AppFlowTest {
         assertEquals("7581773680", call.getString("chatId"));
         assertEquals("done", call.getString("status"));
         assertEquals("Rahul", call.getString("by"));
-        waitFor("undo button shown", () -> findText(root, BuildConfig.IS_AAROHI ? "↩ Wapas Activate mein" : "↩ Wapas TQ mein") != null);
-        assertNotNull(findText(root, "✅ Trade done · Rahul"));
+        if (BuildConfig.IS_AAROHI) {
+            // Ashish Team: Done is final for a member — the chat closes (locked).
+            waitFor("chat closed after Done", chat::isFinishing);
+        } else {
+            waitFor("undo button shown", () -> findText(root, "↩ Wapas TQ mein") != null);
+            assertNotNull(findText(root, "✅ Trade done · Rahul"));
+        }
         cc.pause().stop().destroy();
 
         // Back on the list: fresh load, Sofiya in Done, not in TQ
@@ -220,8 +225,16 @@ public class AppFlowTest {
         assertNotNull("row shows who marked", findText(row, "✅ Trade done · Rahul"));
         c.pause().stop().destroy();
 
-        // Undo
+        // Undo (Ashish Team: a member can't; only the admin can)
         Intent in2 = new Intent(in).putExtra("tradeStatus", "done").putExtra("tradeBy", "Rahul");
+        if (BuildConfig.IS_AAROHI) {
+            ActivityController<ChatActivity> cm = Robolectric.buildActivity(ChatActivity.class, in2).setup();
+            View rm = cm.get().getWindow().getDecorView();
+            assertNotNull(findText(rm, "🔒 Sirf admin wapas la sakta hai"));
+            assertNull(findText(rm, "↩ Wapas Activate mein"));
+            cm.pause().stop().destroy();
+            ctx.getSharedPreferences("aisha_team", Context.MODE_PRIVATE).edit().putString("role", "master").apply();
+        }
         ActivityController<ChatActivity> cc2 = Robolectric.buildActivity(ChatActivity.class, in2).setup();
         View r2 = cc2.get().getWindow().getDecorView();
         findText(r2, BuildConfig.IS_AAROHI ? "↩ Wapas Activate mein" : "↩ Wapas TQ mein").performClick();
@@ -406,7 +419,7 @@ public class AppFlowTest {
     }
 
     @Test public void expiredSession_goesToLogin() throws Exception {
-        ctx.getSharedPreferences("aisha_team", Context.MODE_PRIVATE).edit().putString("cookie", "expired").apply();
+        ctx.getSharedPreferences("aisha_team", Context.MODE_PRIVATE).edit().putString("cookie", "expired").putInt("auth_v", 2).apply();
         Api.setMemberName(ctx, "Rahul");
         ActivityController<ListActivity> c = Robolectric.buildActivity(ListActivity.class).setup();
         waitFor("login opened", () -> { Intent n = shadowOf(c.get()).peekNextStartedActivity(); return n != null && n.getComponent().getClassName().equals(LoginActivity.class.getName()); });
@@ -414,7 +427,7 @@ public class AppFlowTest {
     }
 
     @Test public void missingMemberName_isAsked() throws Exception {
-        ctx.getSharedPreferences("aisha_team", Context.MODE_PRIVATE).edit().putString("cookie", FakeServer.TOKEN).apply();
+        ctx.getSharedPreferences("aisha_team", Context.MODE_PRIVATE).edit().putString("cookie", FakeServer.TOKEN).putInt("auth_v", 2).apply();
         ActivityController<ListActivity> c = Robolectric.buildActivity(ListActivity.class).setup();
         AlertDialog d = (AlertDialog) ShadowAlertDialog.getLatestDialog();
         assertNotNull("name dialog", d);
@@ -432,5 +445,67 @@ public class AppFlowTest {
         out.add(v);
         if (v instanceof ViewGroup) for (int i = 0; i < ((ViewGroup) v).getChildCount(); i++) out.addAll(allViews(((ViewGroup) v).getChildAt(i)));
         return out;
+    }
+
+    @Test public void aarohi_memberBanner_lockedDone_andAdminDashboard() throws Exception {
+        if (!BuildConfig.IS_AAROHI) return;
+        loginSession("Rahul");
+        server.tradeStatus.put("7581773680", "done"); server.tradeBy.put("7581773680", "Rahul"); server.locked.add("7581773680");
+        server.target = 5;
+        ActivityController<ListActivity> c = Robolectric.buildActivity(ListActivity.class).setup();
+        ListActivity la = c.get();
+        View lroot = la.getWindow().getDecorView();
+        ListView lv = findList(lroot);
+        waitFor("list loaded", () -> lv.getAdapter().getCount() > 0);
+        waitFor("member banner", () -> findText(lroot, "🏆 Aapne 1 trade karwaye") != null);
+        assertTrue(findText(lroot, "🏆 Aapne 1 trade karwaye").getText().toString().contains("Aaj 1/5"));
+        findText(lroot, "Done").performClick();
+        assertEquals(List.of("Sofiya"), rowNames(lv));
+        View row = lv.getAdapter().getView(0, null, lv);
+        assertNotNull("locked row", findText(row, "🔒"));
+        shadowOf(la).clearNextStartedActivities();
+        lv.performItemClick(row, 0, 0);
+        assertNull("locked chat does not open", shadowOf(la).getNextStartedActivity());
+        c.pause().stop().destroy();
+
+        // Admin password → admin dashboard
+        Api.clearSession(ctx);
+        LoginActivity a = Robolectric.buildActivity(LoginActivity.class).setup().get();
+        View root = a.getWindow().getDecorView();
+        List<EditText> edits = new ArrayList<>();
+        for (TextView t : texts(root)) if (t instanceof EditText) edits.add((EditText) t);
+        edits.get(0).setText("Ashish");
+        edits.get(1).setText(FakeServer.ADMIN_PASSWORD);
+        findText(root, "Login").performClick();
+        waitFor("admin session", () -> Api.isMaster(ctx));
+        assertTrue(server.lastAuth.getBoolean("app"));
+        assertEquals("Ashish", server.lastAuth.getString("name"));
+        waitFor("admin screen opened", () -> shadowOf(a).peekNextStartedActivity() != null);
+        assertEquals(AdminActivity.class.getName(), shadowOf(a).getNextStartedActivity().getComponent().getClassName());
+
+        ActivityController<AdminActivity> ac = Robolectric.buildActivity(AdminActivity.class).setup();
+        View ar = ac.get().getWindow().getDecorView();
+        waitFor("stats shown", () -> findText(ar, "Choice FinX") != null && findText(ar, "Rahul") != null);
+        assertNotNull(findText(ar, "17"));
+        assertTrue(server.log.contains("GET /api/admin/stats?range=today"));
+        findText(ar, "Kal").performClick();
+        waitFor("yesterday loaded", () -> server.log.contains("GET /api/admin/stats?range=yesterday"));
+        // Split users: pick both members, "only not given", confirm
+        findText(ar, "👥 Users baanto").performClick();
+        AlertDialog d1 = (AlertDialog) ShadowAlertDialog.getLatestDialog();
+        d1.getListView().performItemClick(null, 0, 0);
+        d1.getListView().performItemClick(null, 1, 1);
+        d1.getButton(AlertDialog.BUTTON_POSITIVE).performClick();
+        shadowOf(android.os.Looper.getMainLooper()).idle();
+        AlertDialog d2 = (AlertDialog) ShadowAlertDialog.getLatestDialog();
+        d2.getListView().performItemClick(null, 0, 0);
+        shadowOf(android.os.Looper.getMainLooper()).idle();
+        AlertDialog d3 = (AlertDialog) ShadowAlertDialog.getLatestDialog();
+        d3.getButton(AlertDialog.BUTTON_POSITIVE).performClick();
+        waitFor("assign called", () -> server.assignCalls.size() == 1);
+        JSONObject call = server.assignCalls.get(0);
+        assertEquals("unassigned", call.getString("scope"));
+        assertEquals(2, call.getJSONArray("members").length());
+        ac.pause().stop().destroy();
     }
 }

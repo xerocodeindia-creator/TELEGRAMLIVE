@@ -24,7 +24,7 @@ public class LoginActivity extends Activity {
 
         TextView title = Ui.text(this, BuildConfig.APP_TITLE, 26, Ui.TEXT, true);
         title.setGravity(Gravity.CENTER);
-        TextView sub = Ui.text(this, "Team login — dashboard wala password", 14, Ui.MUTED, false);
+        TextView sub = Ui.text(this, BuildConfig.IS_AAROHI ? "Team member: naam + team password\nAdmin: admin password" : "Team login — dashboard wala password", 14, Ui.MUTED, false);
         sub.setGravity(Gravity.CENTER);
         sub.setPadding(0, Ui.dp(this, 6), 0, Ui.dp(this, 24));
 
@@ -65,8 +65,11 @@ public class LoginActivity extends Activity {
             if (p.isEmpty()) { err.setText("Password daaliye"); return; }
             Api.setMemberName(this, who);
             go.setEnabled(false); go.setText("Login ho raha…"); err.setText("");
-            Api.login(this, p, new Api.Done<Boolean>() {
-                public void ok(Boolean v) { startActivity(new Intent(LoginActivity.this, ListActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)); finish(); }
+            Api.login(this, p, who, new Api.Done<Boolean>() {
+                public void ok(Boolean v) {
+                    Class<?> next = Api.isMaster(LoginActivity.this) ? AdminActivity.class : ListActivity.class;
+                    startActivity(new Intent(LoginActivity.this, next).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)); finish();
+                }
                 public void fail(Exception e) { go.setEnabled(true); go.setText("Login"); err.setText(e.getMessage() == null ? "Login failed" : e.getMessage()); }
             });
         };

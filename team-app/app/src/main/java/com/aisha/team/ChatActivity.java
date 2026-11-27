@@ -183,6 +183,9 @@ public class ChatActivity extends Activity {
                 row.addView(actionButton("✅ Done", Ui.GREEN, () -> confirmStatus("done")), cell);
                 row.addView(actionButton("🚫 Not int", 0xFFB84A4A, () -> confirmStatus("not_interested")), cell);
                 row.addView(actionButton(BuildConfig.IS_AAROHI ? "↩ Activate" : "↩ TQ", Ui.OUT, () -> confirmStatus("")), last);
+            } else if (tradeStatus.equals("done") && Api.isMember(this)) {
+                // Ashish Team: Done is final for members — only the admin can move the user back.
+                row.addView(Ui.text(this, "🔒 Sirf admin wapas la sakta hai", 12, Ui.MUTED, false));
             } else {
                 row.addView(actionButton(BuildConfig.IS_AAROHI ? "↩ Wapas Activate mein" : "↩ Wapas TQ mein", Ui.OUT, () -> confirmStatus("")), new LinearLayout.LayoutParams(-1, -2));
             }
@@ -282,6 +285,7 @@ public class ChatActivity extends Activity {
                     renderActions();
                     if (status.isEmpty()) tradeCampaign = "";
                     Toast.makeText(ChatActivity.this, status.equals("done") ? "Trade Done mein daal diya ✓" : status.equals("not_interested") ? "Not Interested mein daal diya ✓" : "Wapas " + LIST + " mein ✓", Toast.LENGTH_SHORT).show();
+                    if (status.equals("done") && Api.isMember(ChatActivity.this)) finish(); // Done chats are locked for members
                 }
                 public void fail(Exception e) {
                     actions.setAlpha(1f);
@@ -303,7 +307,9 @@ public class ChatActivity extends Activity {
             }
             public void fail(Exception e) {
                 loading = false;
-                if (e instanceof Api.Unauthorized) { startActivity(new Intent(ChatActivity.this, LoginActivity.class)); finish(); }
+                if (e instanceof Api.Unauthorized) { startActivity(new Intent(ChatActivity.this, LoginActivity.class)); finish(); return; }
+                String m = e.getMessage() == null ? "" : e.getMessage();
+                if (m.startsWith("Trade Done") || m.startsWith("Ye user kisi aur")) { Toast.makeText(ChatActivity.this, "🔒 " + m, Toast.LENGTH_LONG).show(); finish(); }
             }
         });
     }

@@ -19,7 +19,7 @@ android {
         aarohi {
             dimension "bot"
             applicationId "com.aarohi.team"
-            versionCode 6; versionName "1.5"
+            versionCode 7; versionName "1.6"
             buildConfigField "String", "BASE_URL", '"https://telegramlive.vercel.app"'
             buildConfigField "String", "BOT_NAME", '"Aarohi"'
             buildConfigField "String", "APP_TITLE", '"Ashish Team"'

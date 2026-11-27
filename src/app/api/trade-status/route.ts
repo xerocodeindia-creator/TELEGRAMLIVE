@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireAdmin, jsonError, privateJsonHeaders } from "@/lib/auth";
+import { requireAdmin, jsonError, privateJsonHeaders, getSession } from "@/lib/auth";
+import { IS_AISHA } from "@/lib/brand";
 import { n8nConfig, upsertByClientId, findByColumn } from "@/lib/n8n";
 import { logTradeEvent } from "@/lib/trade-history";
 import { waitUntil } from "@vercel/functions";
@@ -11,7 +12,8 @@ export const dynamic = "force-dynamic";
 const ALLOWED = new Set(["done", "not_interested", "payment_sent", ""]);
 
 export async function POST(req: Request) {
-  if (!(await requireAdmin())) return jsonError("Unauthorized", 401);
+  const session = await getSession();
+  if (!session) return jsonError("Unauthorized", 401);
   const origin = req.headers.get("origin");
   if (origin && new URL(origin).host !== new URL(req.url).host) return jsonError("Cross-origin request denied", 403);
   const body = await req.json().catch(() => ({}));
@@ -26,8 +28,12 @@ export async function POST(req: Request) {
     // Only existing users can be marked (upsert must never create a new progress row).
     const row = await findByColumn(cfg.tables.clients, "client_id", chatId);
     if (!row) return jsonError("User nahi mila", 404);
+    const isMember = !IS_AISHA && session.role === "member";
+    // Ashish Team: a Done user is locked for members (only the master admin can move him back).
+    if (isMember && String(row.trade_status || "") === "done") return jsonError("Trade Done — sirf admin badal sakta hai", 403);
     const at = status ? new Date().toISOString() : "";
-    await upsertByClientId(cfg.tables.clients, chatId, { trade_status: status, trade_status_at: at, trade_status_by: status ? by : "" });
+    const extra = isMember && status && !String(row.assigned_to || "").trim() ? { assigned_to: session.name } : {};
+    await upsertByClientId(cfg.tables.clients, chatId, { trade_status: status, trade_status_at: at, trade_status_by: status ? by : "", ...extra });
     // 27 Nov 2026: history row is written after the response (the app waited for it).
     waitUntil(logTradeEvent(chatId, String(row.first_name || ""), status || "back_to_tq", status ? String(row.trade_campaign || "") : "", by, at || new Date().toISOString()));
     console.log(`[trade-status] ${chatId} -> "${status}" by "${by}" ${Date.now() - t0} ms`);

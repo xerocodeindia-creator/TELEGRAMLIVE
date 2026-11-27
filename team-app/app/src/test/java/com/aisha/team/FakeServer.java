@@ -24,6 +24,11 @@ import java.util.Map;
 class FakeServer {
     static final String PASSWORD = "test-pass";
     static final String TOKEN = "tok123";
+    static final String ADMIN_PASSWORD = "admin-pass";
+    volatile JSONObject lastAuth;
+    final java.util.Set<String> locked = java.util.Collections.synchronizedSet(new java.util.HashSet<>());
+    volatile int target = 0;
+    final List<JSONObject> assignCalls = java.util.Collections.synchronizedList(new ArrayList<>());
     final MockWebServer http = new MockWebServer();
     final List<String> log = Collections.synchronizedList(new ArrayList<>());
     final List<JSONObject> sentTexts = Collections.synchronizedList(new ArrayList<>());
@@ -68,8 +73,11 @@ class FakeServer {
             log.add(method + " " + path + (query == null ? "" : "?" + query));
             String body = ex.getBody().readUtf8();
             if (path.equals("/api/auth") && method.equals("POST")) {
-                if (!new JSONObject(body).optString("password").equals(PASSWORD)) return send(401, new JSONObject().put("error", "Incorrect password."));
-                return send(200, new JSONObject().put("authenticated", true)).addHeader("Set-Cookie", "aarohi_admin_session=" + TOKEN + "; Path=/; HttpOnly; Secure; SameSite=strict");
+                lastAuth = new JSONObject(body);
+                String pw = lastAuth.optString("password");
+                String role = pw.equals(ADMIN_PASSWORD) ? "master" : pw.equals(PASSWORD) ? "member" : "";
+                if (role.isEmpty()) return send(401, new JSONObject().put("error", "Incorrect password."));
+                return send(200, new JSONObject().put("authenticated", true).put("role", role).put("name", lastAuth.optString("name"))).addHeader("Set-Cookie", "aarohi_admin_session=" + TOKEN + "; Path=/; HttpOnly; Secure; SameSite=strict");
             }
             String cookie = ex.getHeader("Cookie");
             if (cookie == null || !cookie.equals("aarohi_admin_session=" + TOKEN)) return send(401, new JSONObject().put("error", "Unauthorized"));
@@ -81,7 +89,8 @@ class FakeServer {
                     users.put(user("222", "Anu", "HDFC", "step1", 0, now - 26 * 3600000L, "Apka Bonus Ready Hai", "bot"));
                     users.put(user("333", "Old", "Choice", "step1", 0, now - 86400000L, "nahi", "in"));
                     if (BuildConfig.IS_AAROHI) users.put(user("444", "Plain", "Choice", "", 0, now - 7200000L, "hi", "in")); // TQ without bonus: must be hidden in Ashish Team
-                    return send(200, new JSONObject().put("users", users));
+                    for (int i = 0; i < users.length(); i++) { JSONObject u = users.getJSONObject(i); if (locked.contains(u.getString("id"))) u.put("locked", true).put("last", JSONObject.NULL).put("unread", 0); }
+                    return send(200, new JSONObject().put("users", users).put("me", new JSONObject().put("name", "Rahul").put("target", target)));
                 }
                 case "/api/messages": {
                     JSONArray m = new JSONArray();
@@ -92,6 +101,19 @@ class FakeServer {
                     synchronized (sentTexts) { for (JSONObject t : sentTexts) m.put(new JSONObject().put("id", 100 + extra++).put("direction", "admin").put("text", t.optString("text")).put("fileId", "").put("time", iso(now)).put("status", "manual_admin")); }
                     return send(200, new JSONObject().put("chatId", query == null ? "" : query.replace("chatId=", "")).put("messages", m));
                 }
+                case "/api/admin/stats": {
+                    JSONObject st = new JSONObject()
+                        .put("range", new JSONObject().put("label", "Aaj").put("from", "2026-11-27").put("to", "2026-11-27"))
+                        .put("leads", 40)
+                        .put("accounts", new JSONObject().put("total", 17).put("byApp", new JSONObject().put("Choice FinX", 12).put("Angel One", 5).put("Bajaj", 0)).put("byTask", new JSONArray().put(11).put(6).put(0)))
+                        .put("trade", new JSONObject().put("payment", 4).put("done", 3).put("notInt", 1))
+                        .put("bonus", new JSONObject().put("total", 110).put("replied", 55).put("noReply", 55).put("active", 90).put("unassigned", 30))
+                        .put("members", new JSONArray()
+                            .put(new JSONObject().put("name", "Rahul").put("assigned", 30).put("payment", 2).put("done", 2).put("notInt", 0).put("target", 5).put("todayDone", 2))
+                            .put(new JSONObject().put("name", "Ashu").put("assigned", 30).put("payment", 2).put("done", 1).put("notInt", 1).put("target", 0).put("todayDone", 1)));
+                    return send(200, st);
+                }
+                case "/api/admin/assign": assignCalls.add(new JSONObject(body)); return send(200, new JSONObject().put("changed", 30).put("failed", 0).put("counts", new JSONObject().put("Rahul", 15).put("Ashu", 15)));
                 case "/api/manual-reply": sentTexts.add(new JSONObject(body)); return send(200, new JSONObject().put("sent", true));
                 case "/api/send-photo": sentPhotos.add(new JSONObject(body)); return send(200, new JSONObject().put("sent", true));
                 case "/api/trade-templates":

@@ -17,6 +17,7 @@ import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -27,7 +28,7 @@ import java.util.Locale;
 
 /** Trade Qualified users (same list as the dashboard filter), unread first. */
 public class ListActivity extends Activity {
-    static class User { String id, name, phone, apps, bonus, preview, tradeStatus, tradeBy, tradeCampaign; long lastTime, tradeAt; int unread; boolean lastIn; }
+    static class User { String id, name, phone, apps, bonus, preview, tradeStatus, tradeBy, tradeCampaign; long lastTime, tradeAt; int unread; boolean lastIn, locked; String assignedTo = ""; }
 
     private final List<User> all = new ArrayList<>();
     private final List<User> shown = new ArrayList<>();
@@ -54,6 +55,9 @@ public class ListActivity extends Activity {
     private String dateKey = "month"; // default: Is mahine
     private final List<TextView> dateChips = new ArrayList<>();
     private TextView filterBtn, clearBtn;
+    // Ashish Team member strip: "Aapne N trade karwaye" + today's target (from the admin).
+    private TextView banner;
+    private int target = 0;
     private List<User> currentBase = new ArrayList<>();
     private final Runnable tick = new Runnable() { public void run() { load(); Api.MAIN.postDelayed(this, 4000); } };
 
@@ -61,6 +65,7 @@ public class ListActivity extends Activity {
     protected void onCreate(Bundle b) {
         super.onCreate(b);
         if (!Api.hasSession(this)) { startActivity(new Intent(this, LoginActivity.class)); finish(); return; }
+        if (Api.isMaster(this) && !getIntent().getBooleanExtra("fromAdmin", false)) { startActivity(new Intent(this, AdminActivity.class)); finish(); return; }
         int p = Ui.dp(this, 14);
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -95,8 +100,22 @@ public class ListActivity extends Activity {
         logout.setPadding(Ui.dp(this, 12), Ui.dp(this, 4), Ui.dp(this, 4), Ui.dp(this, 4));
         logout.setOnClickListener(v -> new android.app.AlertDialog.Builder(this).setMessage("Logout karein?").setNegativeButton("Nahi", null)
             .setPositiveButton("Haan", (d, w) -> { Api.clearSession(this); startActivity(new Intent(this, LoginActivity.class)); finish(); }).show());
+        if (Api.isMaster(this)) {
+            TextView adm = Ui.text(this, "📊", 18, Ui.TEXT, false);
+            adm.setPadding(Ui.dp(this, 10), Ui.dp(this, 4), Ui.dp(this, 4), Ui.dp(this, 4));
+            adm.setOnClickListener(v -> startActivity(new Intent(this, AdminActivity.class)));
+            top.addView(adm);
+        }
         top.addView(logout);
         root.addView(top);
+
+        banner = Ui.text(this, "", 13, 0xFFFFFFFF, true);
+        banner.setPadding(Ui.dp(this, 12), Ui.dp(this, 7), Ui.dp(this, 12), Ui.dp(this, 7));
+        banner.setBackground(Ui.round(0xFF1F6F4A, Ui.dp(this, 10)));
+        banner.setVisibility(View.GONE);
+        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(-1, -2);
+        blp.setMargins(Ui.dp(this, 10), 0, Ui.dp(this, 10), Ui.dp(this, 6));
+        root.addView(banner, blp);
 
         // Row 2: the three lists as one thin segmented bar.
         LinearLayout tabRow = new LinearLayout(this);
@@ -137,6 +156,7 @@ public class ListActivity extends Activity {
         list.setAdapter(adapter);
         list.setOnItemClickListener((parent, view, pos, id) -> {
             User u = shown.get(pos);
+            if (u.locked) { Toast.makeText(this, "🔒 Trade Done — ye chat band hai", Toast.LENGTH_SHORT).show(); return; }
             Intent i = new Intent(this, ChatActivity.class);
             i.putExtra("id", u.id); i.putExtra("name", u.name); i.putExtra("phone", u.phone); i.putExtra("apps", u.apps);
             i.putExtra("tradeStatus", u.tradeStatus); i.putExtra("tradeBy", u.tradeBy); i.putExtra("tradeAt", u.tradeAt); i.putExtra("tradeCampaign", u.tradeCampaign);
@@ -183,6 +203,8 @@ public class ListActivity extends Activity {
     }
 
     private void apply(JSONObject j) {
+                JSONObject me = j.optJSONObject("me");
+                if (me != null) target = me.optInt("target", 0);
                 JSONArray arr = j.optJSONArray("users");
                 all.clear();
                 for (int i = 0; arr != null && i < arr.length(); i++) {
@@ -204,6 +226,8 @@ public class ListActivity extends Activity {
                     u.tradeBy = o.optString("tradeStatusBy");
                     u.tradeCampaign = o.optString("tradeCampaign");
                     u.tradeAt = Ui.parse(o.optString("tradeStatusAt"));
+                    u.locked = o.optBoolean("locked") && Api.isMember(this);
+                    u.assignedTo = o.optString("assignedTo");
                     // A reply just sent from this phone counts at once, even before the server has it.
                     Object[] sent = Api.lastSent.get(u.id);
                     if (sent != null) {
@@ -353,7 +377,43 @@ public class ListActivity extends Activity {
             chips.get(i).setTextColor(on ? 0xFFFFFFFF : Ui.TEXT);
             chips.get(i).setBackground(on ? Ui.round(Ui.OUT, Ui.dp(this, 16)) : Ui.round(Ui.CARD, Ui.dp(this, 16)));
         }
+        updateBanner();
         adapter.notifyDataSetChanged();
+    }
+
+    /** Member's own score for the chosen date filter (counted on the Done time), plus today vs target. */
+    private void updateBanner() {
+        if (banner == null) return;
+        if (!BuildConfig.IS_AAROHI || Api.isMaster(this)) { banner.setVisibility(View.GONE); return; }
+        String me = Api.memberName(this).trim();
+        if (me.isEmpty()) { banner.setVisibility(View.GONE); return; }
+        long now = System.currentTimeMillis();
+        int n = 0, today = 0;
+        for (User u : all) {
+            if (!"done".equals(u.tradeStatus) || !u.tradeBy.trim().equalsIgnoreCase(me) || u.tradeAt == 0) continue;
+            if (Ui.day(u.tradeAt).equals(Ui.day(now))) today++;
+            if (inDay(u.tradeAt, dateKey)) n++;
+        }
+        String when = "";
+        for (String[] d : DATES) if (d[0].equals(dateKey)) when = d[1];
+        String t = "🏆 Aapne " + n + " trade karwaye (" + when + ")";
+        if (target > 0) t += "   ·   Aaj " + today + "/" + target + (today >= target ? " 🎯" : "");
+        banner.setText(t);
+        banner.setBackground(Ui.round(target > 0 && today >= target ? 0xFF1F6F4A : 0xFF2A3B5C, Ui.dp(this, 10)));
+        banner.setVisibility(View.VISIBLE);
+    }
+
+    private boolean inDay(long t, String key) {
+        if (key.equals("any")) return true;
+        long now = System.currentTimeMillis();
+        String d = Ui.day(t);
+        switch (key) {
+            case "today": return d.equals(Ui.day(now));
+            case "yday": return d.equals(Ui.day(now - 86400000L));
+            case "3d": return d.compareTo(Ui.day(now - 2 * 86400000L)) >= 0;
+            case "month": return d.startsWith(Ui.day(now).substring(0, 8));
+            default: return true;
+        }
     }
 
     private class Adapter extends BaseAdapter {
@@ -370,11 +430,13 @@ public class ListActivity extends Activity {
             h.name.setText(u.name);
             h.time.setText(Ui.listTime(u.lastTime));
             h.time.setTextColor(u.unread > 0 ? Ui.GREEN : Ui.MUTED);
-            if (u.tradeStatus != null && !u.tradeStatus.isEmpty())
+            if (u.locked) h.preview.setText("🔒 " + Ui.statusLabel(u.tradeStatus, u.tradeCampaign) + (u.tradeAt > 0 ? " · " + Ui.listTime(u.tradeAt) : "") + " · chat band");
+            else if (u.tradeStatus != null && !u.tradeStatus.isEmpty())
                 h.preview.setText(Ui.statusLabel(u.tradeStatus, u.tradeCampaign) + (u.tradeBy.isEmpty() ? "" : " · " + u.tradeBy) + (u.tradeAt > 0 ? " · " + Ui.listTime(u.tradeAt) : ""));
             else h.preview.setText(u.preview);
             String tags = u.apps;
             if (!u.bonus.isEmpty()) tags = (tags.isEmpty() ? "" : tags + " · ") + (BuildConfig.IS_AAROHI ? (u.bonus.equals("step2") ? "Reply aaya" : "Reply nahi") : "Bonus " + (u.bonus.equals("step2") ? "2" : "1"));
+            if (Api.isMaster(ListActivity.this) && !u.assignedTo.isEmpty()) tags = (tags.isEmpty() ? "" : tags + " · ") + "👤 " + u.assignedTo;
             h.tags.setText(tags);
             h.badge.setVisibility(u.unread > 0 ? View.VISIBLE : View.GONE);
             h.badge.setText(u.unread > 99 ? "99+" : String.valueOf(u.unread));

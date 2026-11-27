@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireAdmin, jsonError, privateJsonHeaders } from "@/lib/auth";
+import { requireAdmin, jsonError, privateJsonHeaders, getSession, sameName, type Session } from "@/lib/auth";
+import { listMembers } from "@/lib/team";
 import { n8nConfig, readRows, listRows, type Row } from "@/lib/n8n";
 import { toMillis, mapMessage } from "@/lib/mappers";
 import { IS_AISHA } from "@/lib/brand";
@@ -55,6 +56,20 @@ async function messagesForChats(tableId: string, chatIds: string[], paths: strin
   return byChat;
 }
 
+// Ashish Team roles (27 Nov 2026, Aarohi only): a team member sees only users given to him (plus not-yet-given ones);
+// users he marked Done are locked (no messages shown). Master / website see everything.
+async function viewFor(body: any, session: Session | null) {
+  const role = session?.role || "web";
+  if (IS_AISHA || role !== "member") return { ...body, role, me: session ? { name: session.name } : null };
+  const me = session!.name;
+  const members = await listMembers().catch(() => []);
+  const target = members.find(m => sameName(m.name, me))?.target || 0;
+  const users = (body.users as any[])
+    .filter(u => !u.assignedTo || sameName(u.assignedTo, me))
+    .map(u => u.tradeStatus === "done" ? { ...u, last: null, unread: 0, locked: true } : u);
+  return { ...body, users, role, me: { name: me, target } };
+}
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
   // ?warm=1 (no login): an n8n schedule calls this every few minutes so the server keeps the list ready
@@ -62,7 +77,8 @@ export async function GET(req: Request) {
   const warmOnly = url.searchParams.get("warm") === "1";
   if (!warmOnly && !(await requireAdmin())) return jsonError("Unauthorized", 401);
   const fresh = url.searchParams.get("fresh") === "1";
-  if (!warmOnly && !fresh && cache && Date.now() - cache.at < 3000) return NextResponse.json(cache.body, { headers: privateJsonHeaders });
+  const session = warmOnly ? null : await getSession();
+  if (!warmOnly && !fresh && cache && Date.now() - cache.at < 3000) return NextResponse.json(await viewFor(cache.body, session), { headers: privateJsonHeaders });
   const cfg = n8nConfig();
   const t0 = Date.now();
   const paths: string[] = [];
@@ -91,7 +107,7 @@ export async function GET(req: Request) {
     const byChat = new Map<string, ReturnType<typeof mapMessage>[]>();
     for (const id of tqIds) byChat.set(id, (rawByChat.get(id) || []).map(mapMessage));
     const msgCount = [...byChat.values()].reduce((n, l) => n + l.length, 0);
-    type TqUser = { id: string; name: string; phone: string; apps: string[]; bonus: string; tradeStatus: string; tradeStatusAt: string; tradeStatusBy: string; tradeCampaign: string; last: { text: string; direction: string; time: string } | null; lastTime: number; unread: number };
+    type TqUser = { id: string; name: string; phone: string; apps: string[]; bonus: string; tradeStatus: string; tradeStatusAt: string; tradeStatusBy: string; tradeCampaign: string; last: { text: string; direction: string; time: string } | null; lastTime: number; unread: number; assignedTo: string; locked?: boolean };
     const users: TqUser[] = [];
     for (const r of clientRows as Row[]) {
       const id = String(r.client_id || "");
@@ -124,6 +140,7 @@ export async function GET(req: Request) {
         last: last ? { text: last.text || (last.fileId ? "📷 Photo" : ""), direction: last.direction, time: last.time } : null,
         lastTime: last ? toMillis(last.time) : toMillis(r.updatedAt),
         unread,
+        assignedTo: String(r.assigned_to || ""),
       });
     }
     users.sort((a, b) => (b.unread > 0 ? 1 : 0) - (a.unread > 0 ? 1 : 0) || b.lastTime - a.lastTime);
@@ -132,7 +149,7 @@ export async function GET(req: Request) {
     console.log(`[tq] ${Date.now() - t0} ms fresh=${fresh} clients=${clientRows.length} messages=${msgCount} users=${users.length} tq=${cnt("")} done=${cnt("done")} notint=${cnt("not_interested")} payment=${cnt("payment_sent")} ${paths.join(" ")}`);
     cache = { at: Date.now(), body };
     if (warmOnly) return NextResponse.json({ ok: true, users: users.length, ms: Date.now() - t0 }, { headers: privateJsonHeaders });
-    return NextResponse.json(body, { headers: privateJsonHeaders });
+    return NextResponse.json(await viewFor(body, session), { headers: privateJsonHeaders });
   } catch (error) {
     console.log(`[tq] ERROR after ${Date.now() - t0} ms: ${error instanceof Error ? error.message : String(error)}`);
     return NextResponse.json({ error: error instanceof Error ? error.message : "n8n error" }, { status: 502, headers: privateJsonHeaders });
