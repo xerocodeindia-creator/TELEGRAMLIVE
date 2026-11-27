@@ -2,7 +2,7 @@
 // Used by the "Task complete" button and by the "Task submit" (screenshot proof) form.
 import { n8nConfig, findByColumn, upsertByClientId, sendTelegram, logAdminMessage, pauseAfterHumanReply, type Row } from "@/lib/n8n";
 import { IS_AISHA } from "@/lib/brand";
-import { TASK3_ON_HOLD, TASK_IDS, completionPlan, type TaskId } from "@/lib/task-messages";
+import { TASK3_ON_HOLD, TASK_IDS, completionPlan, isV3, type TaskId } from "@/lib/task-messages";
 
 export async function findClient(clientId: string): Promise<Row | undefined> {
   return findByColumn(n8nConfig().tables.clients, "client_id", clientId);
@@ -31,9 +31,14 @@ export async function completeTask(clientId: string, taskId: TaskId, sendMessage
   const index = TASK_IDS.indexOf(taskId);
   // Completing a later task also records the earlier ones, so the order stays consistent.
   // Aisha's two tasks can be done in either order, so only this task is recorded.
-  for (const id of IS_AISHA ? [taskId] : TASK_IDS.slice(0, index + 1)) if (!completed.includes(id)) completed.push(id);
+  // Aarohi v3 users (28 Nov 2026): the Task 3 slot is HDFC SKY, recorded as "task_3_hdfc" like the workflow does.
+  const v3 = isV3(String(row?.task_order || ""));
+  for (const t of IS_AISHA ? [taskId] : TASK_IDS.slice(0, index + 1)) {
+    const id = v3 && t === "task_3" ? "task_3_hdfc" : t;
+    if (!completed.includes(id)) completed.push(id);
+  }
 
-  const plan = completionPlan(taskId, completed, listOf(row?.skipped_tasks));
+  const plan = completionPlan(taskId, completed, listOf(row?.skipped_tasks), String(row?.task_order || ""));
   try {
     await upsertByClientId(cfg.tables.clients, clientId, {
       completed_tasks: JSON.stringify(completed),

@@ -33,6 +33,15 @@ export const TASK3_LINK = IS_AISHA
 
 export const BAJAJ_DONE = (IS_AISHA ? "✅ Aapka 3rd task bhi complete ho gaya hai!" : "✅ Bajaj task complete ho gaya hai!") + "\n\n📩 Aage ke updates WhatsApp group par milenge. Group join karke rakhein.\n\nNote: Account activation aur payment ka final status provider/admin ke update par depend karega.";
 
+/** Aarohi v3 order (new users from 28 Nov 2026, task_order "v3"): Angel One → Choice FinX → HDFC SKY, ₹500 per task.
+ * HDFC SKY uses the Task 3 slot with task id "task_3_hdfc" (same texts as the n8n workflow). */
+export const V3_CHOICE = "📌 TASK - 2\n\n📝 Name: CHOICE FINX ✅\n\n💰 Reward: ₹500\n\n🔗 Link: https://formtraceker.vercel.app/r/choicemira\n\n1️⃣ Link par click karein.\n2️⃣ Account opening process complete karein.\n3️⃣ Complete hone ke baad screenshot send karein.\n\n🤝 Process ke beech mein koi dikkat aaye toh tension na lein, screenshot bhejein. Main aapko step-by-step guide kar dungi.";
+export const V3_HDFC_PRE = "Aapka 2nd task complete ho gaya hai ✅";
+export const V3_HDFC = "📌 TASK - 3\n\n📝 Name: HDFC SKY ✅\n\n💰 Reward: ₹500\n\n🔗 Link: https://formtraceker.vercel.app/r/aswalhdfcsky\n\n1️⃣ Link par click karein.\n2️⃣ Account opening process complete karein.\n3️⃣ Complete hone ke baad screenshot send karein.\n\n🤝 Process ke beech mein koi dikkat aaye toh tension na lein, screenshot bhejein. Main aapko step-by-step guide kar dungi.";
+export const V3_HDFC_DONE = "✅ HDFC SKY task complete ho gaya hai! 🎉\n\nAapke teeno task complete ho gaye hain ✅\n\n📩 Aage ke updates WhatsApp group par milenge. Group join karke rakhein.\n\nNote: Account activation aur payment ka final status provider/admin ke update par depend karega.";
+/** Aarohi: is this client on the v3 order (HDFC SKY as Task 3)? */
+export const isV3 = (taskOrder?: string) => !IS_AISHA && String(taskOrder || "") === "v3";
+
 /** Task 3 (Bajaj) is live for both bots (Aisha since 14 Nov 2026). */
 export const TASK3_ON_HOLD = false;
 
@@ -67,8 +76,13 @@ const ALL_DONE = "✅ Aapke saare tasks complete ho gaye hain! 🎉\n\n📩 Aage
  * new users do HDFC SKY → Choice → Zerodha (3rd task was Bajaj until 26 Nov; 16–25 Nov: Bajaj → HDFC SKY → Choice; earlier: Choice → HDFC SKY → Bajaj), so the next step depends
  * on what is already done or skipped. The WhatsApp group message goes only after the user's first task.
  */
-export function completionPlan(taskId: TaskId, completed: string[] = [], skipped: string[] = []): Plan {
+export function completionPlan(taskId: TaskId, completed: string[] = [], skipped: string[] = [], taskOrder = ""): Plan {
   const fixed = TASK_COMPLETION[taskId];
+  if (isV3(taskOrder)) {
+    if (taskId === "task_1_angel_one") return { ...fixed, messages: [WHATSAPP_GROUP, V3_CHOICE] };
+    if (taskId === "task_2_choice_finx") return { next: { current_task: "task_3_hdfc", flow_step: "task_3_active", next_task_allowed: true }, stampColumn: fixed.stampColumn, messages: [V3_HDFC_PRE, V3_HDFC] };
+    return { ...fixed, messages: [V3_HDFC_DONE] };
+  }
   if (!IS_AISHA) return fixed;
   const done = [...completed.filter(t => t !== taskId), taskId];
   const isFirst = done.length === 1;
@@ -92,7 +106,8 @@ export function completionPlan(taskId: TaskId, completed: string[] = [], skipped
 }
 
 /** What the admin is told the user will receive when this task is completed. */
-export function nextTextFor(taskId: TaskId, completed: string[] = [], skipped: string[] = []): string {
+export function nextTextFor(taskId: TaskId, completed: string[] = [], skipped: string[] = [], taskOrder = ""): string {
+  if (isV3(taskOrder)) return ["WhatsApp group message + Task 2 (Choice FinX, ₹500) link", "\"2nd task complete\" message + Task 3 (HDFC SKY, ₹500) link", "HDFC SKY completion message"][TASK_IDS.indexOf(taskId)];
   if (!IS_AISHA) return NEXT_TEXT[TASK_IDS.indexOf(taskId)];
   const plan = completionPlan(taskId, completed, skipped);
   const group = plan.messages.includes(WHATSAPP_GROUP) ? "WhatsApp group message + " : "";
@@ -107,10 +122,11 @@ export function nextTextFor(taskId: TaskId, completed: string[] = [], skipped: s
 export const QUICK_REPLIES: { label: string; text: string }[] = [
   { label: IS_AISHA ? "HDFC SKY link" : "Task 1 link", text: TASK1_LINK },
   { label: IS_AISHA ? "Choice link" : "Task 2 link", text: IS_AISHA ? CHOICE_PLAIN : TASK2_LINK },
-  { label: IS_AISHA ? "3rd task (hold)" : "Task 3 link", text: IS_AISHA ? "Aapka 3rd task abhi available nahi hai 🙂 Jald hi aapko yahin mil jayega 🙏 Tab tak WhatsApp group join karke rakhiye, saare updates wahin milenge." : TASK3_LINK },
+  { label: IS_AISHA ? "3rd task (hold)" : "Task 3 link (Bajaj, purane users)", text: IS_AISHA ? "Aapka 3rd task abhi available nahi hai 🙂 Jald hi aapko yahin mil jayega 🙏 Tab tak WhatsApp group join karke rakhiye, saare updates wahin milenge." : TASK3_LINK },
+  { label: "Task 3 link (HDFC SKY, naye users)", text: V3_HDFC },
   { label: "App login", text: "Play Store se Angel One app download karke uske Home Page ka screenshot bhej dijiye.\n\n📲 Play Store Link: https://play.google.com/store/apps/details?id=com.msf.angelmobile&hl=en" },
   { label: "Group link", text: "WhatsApp group join kar lijiye, saare updates yahin milenge ✅\n🔗 " + GROUP_LINK },
   { label: "Screenshot bhejo", text: IS_AISHA ? "Account open hone ke baad final screen ka screenshot bhej dijiye 🙂\n\nHDFC SKY: \"We have received your details\" wala screen ya Home screen.\nChoice: Home screen jahan aapka naam aur \"Account Activation in Progress\" ya \"Account Setup ✅\" dikhe." : "Account open hone ke baad profile page ka screenshot bhej dijiye jahan aapka naam aur Client ID dikhe 🙂" },
   { label: "No deposit", text: "Paise add karne ki koi zarurat nahi hai 🙂 Bas account open karke screenshot bhej dijiye." },
   { label: "Bonus info", text: "Aapka bonus hum khud dete hain 😊 Har completed task ka " + (IS_AISHA ? "₹500" : "₹100") + " milta hai. Minimum " + (IS_AISHA ? "2" : "3") + " tasks complete hone ke baad, applications approve hote hi hum khud message karke payment karwa denge." },
-].filter(q => !(IS_AISHA && q.label === "App login"));
+].filter(q => !(IS_AISHA && (q.label === "App login" || q.text === V3_HDFC)));

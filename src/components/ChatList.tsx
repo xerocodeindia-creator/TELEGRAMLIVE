@@ -106,7 +106,7 @@ export function ChatList({ chats, selectedId, onOpen, hidden, loading }: { chats
     if (keys.includes("unread") && c.unread === 0) return false;
     if (keys.includes("paused") && !c.paused) return false;
     if (keys.includes("qualified") && !c.qualified) return false;
-    if (keys.includes("tradeQualified") && !c.client?.bonus && !(c.client?.completed || []).some(id => id === "task_1_angel_one" || id === "task_2_choice_finx" || (!IS_AISHA && id === "task_3"))) return false;
+    if (keys.includes("tradeQualified") && !c.client?.bonus && !(c.client?.completed || []).some(id => id === "task_1_angel_one" || id === "task_2_choice_finx" || (!IS_AISHA && (id === "task_3" || id === "task_3_hdfc")))) return false;
     return true;
   };
 

@@ -14,6 +14,8 @@ const FULL_MESSAGES = 4000;
 function mapClient(r: Row) {
   let completed: string[] = [];
   try { const v = JSON.parse(String(r.completed_tasks || "[]")); if (Array.isArray(v)) completed = v.map(String); } catch {}
+  // Aarohi v3 users finish HDFC SKY as "task_3_hdfc"; the dashboard shows it in the Task 3 slot.
+  if (!IS_AISHA && completed.includes("task_3_hdfc") && !completed.includes("task_3")) completed.push("task_3");
   let skipped: string[] = [];
   try { const v = JSON.parse(String(r.skipped_tasks || "[]")); if (Array.isArray(v)) skipped = v.map(String); } catch {}
   return {
@@ -25,6 +27,7 @@ function mapClient(r: Row) {
     proofStatus: String(r.proof_status || ""),
     completed,
     skipped,
+    taskOrder: r.task_order ? String(r.task_order) : "",
     bonus: r.bonus_status ? String(r.bonus_status) : "",
     updatedAt: r.updatedAt ? String(r.updatedAt) : "",
     t1: r.task_1_completed_at ? String(r.task_1_completed_at) : "",

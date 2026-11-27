@@ -104,7 +104,7 @@ export async function GET(req: Request) {
       try { const v = JSON.parse(String(r.completed_tasks || "[]")); if (Array.isArray(v)) done = v.map(String); } catch {}
       const ts = [r.task_1_completed_at, r.task_2_completed_at, r.task_3_completed_at].map(toMillis).filter(Boolean);
       const day = ts.length ? istDay(Math.min(...ts)) : "";
-      return !!r.bonus_status || (!!day && day >= monthKey && done.some(t => t === "task_1_angel_one" || t === "task_2_choice_finx" || t === "task_3"));
+      return !!r.bonus_status || (!!day && day >= monthKey && done.some(t => t === "task_1_angel_one" || t === "task_2_choice_finx" || t === "task_3" || t === "task_3_hdfc"));
     };
     const tqIds = (clientRows as Row[]).filter(r => /^\d+$/.test(String(r.client_id || "")) && qualifies(r)).map(r => String(r.client_id));
     const rawByChat = await messagesForChats(cfg.tables.messages, tqIds, paths);
@@ -121,7 +121,7 @@ export async function GET(req: Request) {
       const bonus = String(r.bonus_status || "");
       const ts = [r.task_1_completed_at, r.task_2_completed_at, r.task_3_completed_at].map(toMillis).filter(Boolean);
       const tqDay = ts.length ? istDay(Math.min(...ts)) : "";
-      const qualifiedThisMonth = !!tqDay && tqDay >= monthKey && completed.some(t => t === "task_1_angel_one" || t === "task_2_choice_finx" || t === "task_3");
+      const qualifiedThisMonth = !!tqDay && tqDay >= monthKey && completed.some(t => t === "task_1_angel_one" || t === "task_2_choice_finx" || t === "task_3" || t === "task_3_hdfc");
       if (!bonus && !qualifiedThisMonth) continue;
       const list = (byChat.get(id) || []).sort((a, b) => a.id - b.id);
       const last = list[list.length - 1];
@@ -134,7 +134,7 @@ export async function GET(req: Request) {
         phone: r.phone_number ? String(r.phone_number) : "",
         apps: (IS_AISHA
           ? [completed.includes("task_2_choice_finx") ? "Choice" : "", completed.includes("task_1_angel_one") ? "HDFC" : "", completed.includes("task_3") ? "3rd (Axis)" : ""]
-          : [completed.includes("task_1_angel_one") ? "Angel One" : "", completed.includes("task_2_choice_finx") ? "Choice FinX" : "", completed.includes("task_3") ? "Bajaj" : ""]).filter(Boolean),
+          : [completed.includes("task_1_angel_one") ? "Angel One" : "", completed.includes("task_2_choice_finx") ? "Choice FinX" : "", completed.includes("task_3_hdfc") ? "HDFC SKY" : completed.includes("task_3") ? "Bajaj" : ""]).filter(Boolean),
         bonus,
         // "" = in the Trade Qualified list; "done" / "not_interested" = moved out by the team.
         tradeStatus: String(r.trade_status || ""),

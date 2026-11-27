@@ -3,7 +3,7 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type PointerEvent as RPointerEvent, type MouseEvent as RMouseEvent } from "react";
 import { ArrowLeft, Bot, Check, CheckCheck, CirclePause, CirclePlay, Clock3, AlertCircle, Send, ChevronDown, X, Zap, ImageOff, MessageCircle, CircleCheckBig, Phone, Hash, ImagePlus, Paperclip } from "lucide-react";
 import styles from "@/app/dashboard.module.css";
-import { type Chat, type Msg, TASKS, taskTitle, avatarColor, dayKey, dayLabel, fullDate, initials, isMedia, ms, timeOf } from "@/lib/ui";
+import { type Chat, type Msg, TASKS, taskTitle, taskNameFor, avatarColor, dayKey, dayLabel, fullDate, initials, isMedia, ms, timeOf } from "@/lib/ui";
 import { IS_AISHA } from "@/lib/brand";
 import { QUICK_REPLIES, nextTextFor } from "@/lib/task-messages";
 import { BOT_NAME } from "@/lib/brand";
@@ -212,7 +212,7 @@ export function ChatView({ chat, messages, visible, globalHuman, connected, onBa
         {TASKS.map((t, i) => {
           const done = chat.client?.completed.includes(t.id);
           const current = !done && i === currentTaskIndex;
-          return <span key={t.id} className={done ? styles.stepDone : current ? styles.stepCurrent : styles.stepTodo}>{done ? <Check size={12} /> : i + 1} {t.name}</span>;
+          return <span key={t.id} className={done ? styles.stepDone : current ? styles.stepCurrent : styles.stepTodo}>{done ? <Check size={12} /> : i + 1} {taskNameFor(i, chat.client)}</span>;
         })}
         {chat.stage.key === "onboarding" && <span className={styles.stepOnboarding}>Onboarding</span>}
       </div>
@@ -282,11 +282,11 @@ function TaskModal({ chat, taskIndex, onClose, onConfirm }: { chat: Chat; taskIn
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const task = TASKS[taskIndex];
-  const nextText: ReactNode = nextTextFor(task.id, chat.client?.completed, chat.client?.skipped);
+  const nextText: ReactNode = nextTextFor(task.id, chat.client?.completed, chat.client?.skipped, chat.client?.taskOrder);
   return (
     <div className={styles.modalBackdrop} onClick={onClose}>
       <div className={styles.modal} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true">
-        <h3>{IS_AISHA ? `${task.name} complete?` : `Task ${taskIndex + 1} (${task.name}) complete?`}</h3>
+        <h3>{IS_AISHA ? `${task.name} complete?` : `Task ${taskIndex + 1} (${taskNameFor(taskIndex, chat.client)}) complete?`}</h3>
         <p><b>{chat.name}</b> ka {IS_AISHA ? `${task.name} task complete mark hoga` : `Task ${taskIndex + 1} complete mark hoga${taskIndex < 2 ? ` aur user Task ${taskIndex + 2} par chala jayega` : " aur saare tasks done ho jayenge"}`}.</p>
         <label className={styles.checkLine}><input type="checkbox" checked={sendNext} onChange={e => setSendNext(e.target.checked)} /> User ko bhejo: {nextText}</label>
         {err && <div className={styles.modalError}>{err}</div>}
@@ -330,7 +330,7 @@ function ProofModal({ chat, defaultIndex, onClose, onSubmit }: { chat: Chat; def
   const fileRef = useRef<HTMLInputElement | null>(null);
   const task = TASKS[taskIndex];
   const alreadyDone = !!chat.client?.completed.includes(task.id);
-  const nextText = nextTextFor(task.id, chat.client?.completed, chat.client?.skipped);
+  const nextText = nextTextFor(task.id, chat.client?.completed, chat.client?.skipped, chat.client?.taskOrder);
 
   const pick = async (file?: File | null) => {
     if (!file) return;
@@ -356,7 +356,7 @@ function ProofModal({ chat, defaultIndex, onClose, onSubmit }: { chat: Chat; def
         <div className={styles.taskPicker}>
           {TASKS.map((t, i) => (
             <button key={t.id} type="button" className={i === taskIndex ? styles.taskPickActive : styles.taskPick} onClick={() => setTaskIndex(i)}>
-              {IS_AISHA ? t.name : `Task ${i + 1} · ${t.name}`}{chat.client?.completed.includes(t.id) ? " ✓" : ""}
+              {IS_AISHA ? t.name : `Task ${i + 1} · ${taskNameFor(i, chat.client)}`}{chat.client?.completed.includes(t.id) ? " ✓" : ""}
             </button>
           ))}
         </div>

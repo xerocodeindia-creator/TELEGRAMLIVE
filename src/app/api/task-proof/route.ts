@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 
 const TASK_NAMES: Record<TaskId, string> = IS_AISHA
   ? { task_1_angel_one: "HDFC SKY", task_2_choice_finx: "CHOICE", task_3: "TASK 3" }
-  : { task_1_angel_one: "ANGEL ONE", task_2_choice_finx: "CHOICE FINX", task_3: "BAJAJ" };
+  : { task_1_angel_one: "ANGEL ONE", task_2_choice_finx: "CHOICE FINX", task_3: "BAJAJ / HDFC SKY" };
 const clean = (v: unknown, max: number) => String(v ?? "").replace(/[\r\n]+/g, " ").trim().slice(0, max);
 
 // Human (dashboard) submits a task proof: screenshot + details go to the admin Telegram chat and
