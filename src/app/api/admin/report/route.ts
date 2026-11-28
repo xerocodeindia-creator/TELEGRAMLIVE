@@ -21,7 +21,7 @@ export async function GET(req: Request) {
   lines.push([]);
   lines.push(["Naye leads", leads(clients, r)]);
   lines.push(["Accounts total", acc.length]);
-  for (const [, app] of TEAM_APPS) lines.push([`  ${app}`, acc.filter(a => a.app === app).length]);
+  for (const app of [...new Set([...TEAM_APPS.map(([, x]) => x), ...acc.map(a => a.app)])]) lines.push([`  ${app}`, acc.filter(a => a.app === app).length]);
   for (let i = 1; i <= 3; i++) lines.push([`  Task ${i}`, acc.filter(a => Math.min(3, a.taskNo) === i).length]);
   lines.push(["Funds / payment bheja", tr.filter(x => x.event === "payment_sent").length]);
   lines.push(["Trade done", tr.filter(x => x.event === "done").length]);

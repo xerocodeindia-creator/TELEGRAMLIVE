@@ -38,7 +38,7 @@ public class ListActivity extends Activity {
     private boolean loading;
     // Filter chips: key → label. "all" clears the filter.
     private static final String[][] FILTERS = BuildConfig.TEAM_ADMIN
-        ? new String[][] { {"all", "Sab"}, {"unread", "Unread"}, {"bonus1", "Reply nahi"}, {"bonus2", "Reply aaya"}, {"angel", "Angel One"}, {"choice", "Choice FinX"}, {"bajaj", "Bajaj"} }
+        ? new String[][] { {"all", "Sab"}, {"unread", "Unread"}, {"bonus1", "Reply nahi"}, {"bonus2", "Reply aaya"}, {"angel", "Angel One"}, {"choice", "Choice FinX"}, {"hdfc", "HDFC SKY"} }
         : new String[][] { {"all", "Sab"}, {"unread", "Unread"}, {"bonus1", "Bonus 1"}, {"bonus2", "Bonus 2"}, {"choice", "Choice"}, {"hdfc", "HDFC"}, {"bajaj", "Bajaj"} };
     private String filterKey = "all";
     private final List<TextView> chips = new ArrayList<>();

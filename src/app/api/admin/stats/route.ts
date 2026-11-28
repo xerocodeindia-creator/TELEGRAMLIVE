@@ -42,7 +42,7 @@ export async function GET(req: Request) {
     const body = {
       range: r,
       leads: leads(clients, r),
-      accounts: { total: acc.length, byApp, byTask, apps: TEAM_APPS.map(([, a]) => a) },
+      accounts: { total: acc.length, byApp, byTask, apps: [...TEAM_APPS.map(([, a]) => a), ...Object.keys(byApp).filter(k => byApp[k] > 0 && !TEAM_APPS.some(([, a]) => a === k))] },
       trade: { payment: ev("payment_sent"), done: ev("done"), notInt: ev("not_interested"), backToList: ev("back_to_tq") },
       bonus: { total: bonusRows.length, replied: bonusRows.filter(c => c.bonus_status === "step2").length, noReply: bonusRows.filter(c => c.bonus_status === "step1").length, active: active.length, unassigned: active.filter(c => !String(c.assigned_to || "").trim()).length },
       members: perMember,

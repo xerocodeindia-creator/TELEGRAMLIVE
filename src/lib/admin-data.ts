@@ -1,7 +1,10 @@
 import { n8nConfig, readRows, type Row } from "@/lib/n8n";
 import { TRADE_HISTORY_TABLE } from "@/lib/trade-history";
 import { toMillis } from "@/lib/mappers";
-import { TEAM_APPS } from "@/lib/brand";
+import { TEAM_APPS, OLD_TASK3_APP } from "@/lib/brand";
+
+/** Aarohi: Task 3 was Bajaj unless the user's completed tasks say HDFC SKY (task_3_hdfc) or task_order is v3. */
+const col3Old = (c: Row) => !String(c.completed_tasks || "").includes("task_3_hdfc") && String(c.task_order || "") !== "v3";
 
 // Ashish Team master admin (Aarohi): numbers for a date range in IST. 27 Nov 2026.
 const IST = 5.5 * 3600 * 1000, DAY = 86400000;
@@ -103,7 +106,8 @@ export function accounts(clients: Row[], r: Range): AccountRow[] {
   for (const c of clients) {
     const id = String(c.client_id || "");
     if (!/^\d+$/.test(id)) continue;
-    const done = APPS.map(([col, app]) => ({ t: toMillis(c[col]), app })).filter(x => x.t).sort((a, b) => a.t - b.t);
+    const oldT3 = OLD_TASK3_APP && col3Old(c);
+    const done = APPS.map(([col, app]) => ({ t: toMillis(c[col]), app: oldT3 && col === "task_3_completed_at" ? OLD_TASK3_APP : app })).filter(x => x.t).sort((a, b) => a.t - b.t);
     done.forEach((x, i) => {
       if (inRange(x.t, r)) out.push({ t: x.t, name: String(c.first_name || ""), id, phone: String(c.phone_number || "").replace(/\D/g, "").replace(/^91(?=\d{10}$)/, ""), app: x.app, taskNo: i + 1, assigned: String(c.assigned_to || "") });
     });

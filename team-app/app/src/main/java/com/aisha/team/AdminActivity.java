@@ -142,7 +142,7 @@ public class AdminActivity extends Activity {
         row(card("Naye leads", j.optInt("leads"), Ui.ACCENT), card("Accounts", acc == null ? 0 : acc.optInt("total"), Ui.GREEN));
         // App names come from the server (Ashish Team: Angel One / Choice FinX / Bajaj; Team Dhruv: HDFC SKY / Choice / Axis Direct).
         JSONArray names = acc == null ? null : acc.optJSONArray("apps");
-        if (names == null || names.length() == 0) names = new JSONArray().put("Choice FinX").put("Angel One").put("Bajaj");
+        if (names == null || names.length() == 0) names = new JSONArray().put("Angel One").put("Choice FinX").put("HDFC SKY");
         View[] cards = new View[names.length()];
         for (int i = 0; i < names.length(); i++) cards[i] = card(names.optString(i), app == null ? 0 : app.optInt(names.optString(i)), Ui.TEXT);
         row(cards);
